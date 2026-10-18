@@ -9,6 +9,10 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Architecture: architecture.md
+  - Systems:
+      - Wrecks engine: systems/wrecks.md
+      - Client: systems/client.md
+      - Server: systems/server.md
 
 theme:
   name: material
