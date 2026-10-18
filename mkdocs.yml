@@ -15,6 +15,7 @@ nav:
       - Server: systems/server.md
   - Network protocol: protocol.md
   - Technical study: technical-study.md
+  - Accessibility: accessibility.md
 
 theme:
   name: material
