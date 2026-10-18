@@ -1,0 +1,5 @@
+# MkDocs build output
+site/
+
+# Local virtual environment
+.venv/
