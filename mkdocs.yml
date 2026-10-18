@@ -8,6 +8,7 @@ edit_uri: https://github.com/Space-Type/Documentation/edit/main/docs/
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Architecture: architecture.md
 
 theme:
   name: material
