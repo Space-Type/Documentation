@@ -13,6 +13,7 @@ nav:
       - Wrecks engine: systems/wrecks.md
       - Client: systems/client.md
       - Server: systems/server.md
+  - Network protocol: protocol.md
 
 theme:
   name: material
