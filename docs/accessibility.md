@@ -7,11 +7,11 @@ This page lists what exists and what is planned, by category.
 
 | Feature | Status |
 |---|---|
-| **Remappable controls**: every game action can be bound to any key, mouse button, gamepad button or stick (`ActionMap` in the render module) | Engine support available, settings screen planned |
-| **Gamepad support**, including analog sticks and triggers | Available in the render module |
-| Several bindings for the same action (for example arrows and WASD) | Available |
+| **Remappable controls**: every game action can be bound to any key, mouse button, gamepad button or stick (`ActionMap` in the render module) | Used by the game (`Controls`), settings screen planned |
+| **Gamepad support**, including analog sticks and triggers | Available in the game: D-pad or left stick to move, A to shoot |
+| Several bindings for the same action (for example arrows and WASD) | Available: keyboard and gamepad work at the same time |
 | Game speed and difficulty settings, so fast reactions are not required | Planned |
-| Hold-to-fire option instead of repeated presses | Planned |
+| Hold-to-fire instead of repeated presses | Available: holding Shoot keeps firing |
 
 ## Visual disabilities
 
@@ -26,6 +26,7 @@ This page lists what exists and what is planned, by category.
 | Feature | Status |
 |---|---|
 | **Separate volumes** for music and sound effects | Available in the render module |
+| Distinct sounds for the player's shots, enemy shots and hits | Available |
 | Visual cues for important sounds (incoming enemy, hit taken) | Planned |
 | The game never relies on sound alone to convey information | Design rule |
 

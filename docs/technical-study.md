@@ -23,7 +23,7 @@ The cost is compiler support: we need GCC 14 or newer and a recent MSVC.
 |---|---|---|
 | Build system generator | **CMake** | Meson, Xmake: CMake is the standard in C++, supported by every IDE, by vcpkg and by GitHub Actions |
 | Package manager | **vcpkg** (manifest mode, as a git submodule) | Conan: more powerful, but needs a Python install and profiles. CPM: simple, but downloads sources at configure time without binary caching |
-| Our own libraries | **git submodules** (Wrecks, components in R-Type) | A package registry: too heavy for libraries we change every day |
+| Our own libraries | **git submodules** (Wrecks, Protecs, components in R-Type) | A package registry: too heavy for libraries we change every day |
 
 vcpkg needs no installation: CMake bootstraps it from the submodule on the first
 configure, and installs the dependencies listed in `vcpkg.json` (for example
@@ -84,8 +84,9 @@ The subject requires UDP for in-game communication, and it is the right tool:
 a lost position is replaced by the next one. Messages that must arrive (joining
 a game, a death) will get acknowledgments on top of UDP.
 
-For sockets, we wrote **`Wrecks::Networking::UDPSocket`** over BSD sockets and
-Winsock instead of using **Asio**: our needs are a single UDP socket with
+For sockets, we wrote **`Protecs::Networking::UDPSocket`** (in Protecs, the
+library shared by the client and the server) over BSD sockets and Winsock
+instead of using **Asio**: our needs are a single UDP socket with
 polling, Asio would add a large dependency and an asynchronous model we do not
 need, and writing the wrapper is also part of building our own engine.
 

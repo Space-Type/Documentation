@@ -2,8 +2,10 @@
 
 ## Requirements
 
-Supported platform: **Linux**. Windows support is in progress (Wrecks already
-builds and passes its tests on Windows in CI).
+Supported platforms: **Linux** and **Windows**. Both are built in CI on every
+pull request.
+
+### Linux
 
 - A C++23 compiler (GCC 14 or newer)
 - CMake 3.20 or newer
@@ -16,6 +18,12 @@ sudo dnf install mesa-libGL-devel libX11-devel libXrandr-devel libXinerama-devel
 # Ubuntu
 sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 ```
+
+### Windows
+
+- Visual Studio 2022 with the "Desktop development with C++" workload (MSVC,
+  which also provides CMake)
+- git
 
 Every other dependency is fetched by the build: see
 [Technical study](technical-study.md#build-system-and-dependencies).
@@ -33,12 +41,33 @@ cmake --build build --parallel
 with the client assets next to them. If the repository was cloned without
 `--recursive`, the first `cmake` fetches the submodules itself.
 
+On Windows, Visual Studio builds several configurations from the same build
+folder: pick one with `--config`, and the binaries are `r-type_server.exe` and
+`r-type_client.exe`:
+
+```sh
+cmake -S . -B build
+cmake --build build --config Release --parallel
+```
+
 ## Run
 
 ```sh
 ./r-type_server    # listens on UDP port 5432
 ./r-type_client
 ```
+
+The client finds its `assets/` folder next to the executable (or in the parent
+and grandparent folders), so it can be started from any directory.
+
+| Action | Keyboard | Gamepad |
+|---|---|---|
+| Move | Arrow keys | D-pad or left stick |
+| Shoot (hold to keep firing) | Space | A |
+
+!!! note
+    The client and the server do not talk to each other yet: the client runs
+    a local game for now (see [Client](systems/client.md#current-state-and-next-steps)).
 
 ## Working on one component
 
