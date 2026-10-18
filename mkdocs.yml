@@ -14,6 +14,7 @@ nav:
       - Client: systems/client.md
       - Server: systems/server.md
   - Network protocol: protocol.md
+  - Technical study: technical-study.md
 
 theme:
   name: material
