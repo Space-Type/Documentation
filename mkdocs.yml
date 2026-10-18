@@ -11,6 +11,7 @@ nav:
   - Architecture: architecture.md
   - Systems:
       - Wrecks engine: systems/wrecks.md
+      - Protecs: systems/protecs.md
       - Client: systems/client.md
       - Server: systems/server.md
   - Network protocol: protocol.md

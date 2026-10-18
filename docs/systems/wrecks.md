@@ -2,11 +2,12 @@
 
 **Wrecks** is our engine library, written in C++23 and shared by the client and
 the server. It knows nothing about R-Type: it provides the building blocks
-(ECS, events, networking) that both programs use.
+(ECS, events, utilities) that both programs use. Everything specific to
+R-Type's network lives in [Protecs](protecs.md).
 
 Repository: [Space-Type/Wrecks](https://github.com/Space-Type/Wrecks). Include
 everything with `#include <wrecks.hpp>`, or one module with
-`<wrecks/ecs.hpp>`, `<wrecks/events.hpp>`, `<wrecks/networking.hpp>`...
+`<wrecks/ecs.hpp>`, `<wrecks/events.hpp>`, `<wrecks/utils.hpp>`...
 
 ## ECS
 
@@ -31,6 +32,9 @@ class Movement {
     void* m_Engine = nullptr;
 
     public:
+        // State systems run in engine.update(), render systems in engine.render()
+        static constexpr Wrecks::ECS::SystemAttributes ATTRIBUTES = { .stage = Wrecks::ECS::SystemAttributes::STATE };
+
         static constexpr Wrecks::Signature signature() noexcept
         {
             return Wrecks::Signature()
@@ -64,8 +68,9 @@ How it works:
 - Systems and components are resolved with templates and concepts: there is no
   virtual call and no runtime type lookup. A missing component or a system that
   does not meet the `System` concept is a **compile error**.
-- In the latest version, systems declare a **stage**: state systems run in
-  `engine.update()` (game logic) and render systems in `engine.render()`.
+- Every system declares a **stage** (`ATTRIBUTES`): state systems run in
+  `engine.update()` (game logic) and render systems in `engine.render()`, so
+  a program can update its state and draw at different moments.
 
 ## Events
 
@@ -74,24 +79,21 @@ receivers subscribe to the manager, and `sendEvent()` forwards an event to
 every subscriber. Events are a `std::variant` of event types, so adding an
 event type is checked at compile time.
 
-## Networking
+## Utilities
 
-- `Wrecks::Networking::UDPSocket` wraps BSD sockets (Linux) and Winsock
-  (Windows) behind one class: `open(host, port)`, `send()`, `receive()`,
-  `pollReceive(timeout)` to wait for data without blocking forever, and
-  `setNonBlocking()`.
-- `Wrecks::Networking::Address` represents an IPv4 address and port.
-- `Wrecks::Networking::SequenceContainer<T, N>` is a fixed-size ring buffer
-  indexed by game tick, meant for client-side prediction and server
-  reconciliation (replaying inputs since a given tick).
+- `Wrecks::Utils::SequenceContainer<T, N>` is a fixed-size ring buffer indexed
+  by game tick, meant for client-side prediction and server reconciliation
+  (replaying inputs since a given tick).
+- Type-list helpers (`IndexOf`, `ElementIndex`, `ContainsType`) and filtered
+  iterators, used by the ECS to resolve components at compile time.
 
-Platform-specific code lives in `*.unix.cpp` and `*.win.cpp` files, and CMake
-only compiles the ones for the current platform.
+The networking module that Wrecks used to provide (`UDPSocket`, `Address`)
+moved to [Protecs](protecs.md), so Wrecks stays independent from the game.
 
 ## Errors
 
-Every error thrown by Wrecks derives from `Wrecks::Error` (for example
-`Wrecks::NetworkError`), so callers can catch them all at once.
+Every error thrown by Wrecks derives from `Wrecks::Error`, so callers can catch
+them all at once.
 
 ## Tests
 
