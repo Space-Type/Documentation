@@ -402,11 +402,11 @@ RFC 9999                  R-Type Protocol                  November 2026
    Tick      Tick the input applies to, in the server's time (Section
              7.2).
    Sequence  u8 order of the inputs sent for the same tick.
-   Input     0 up, 1 down, 2 left, 3 right, 4 fire.
+   Input     0 up, 1 down, 2 left, 3 right, 4 fire, 5 force (launch or
+             recall the Force). A receiver ignores another value.
    State     0 pressed (held down), 1 released.
 
    o  Client to server: a change of one input of the player.
-
 
 
 Space-Type                    Informational                     [Page 7]
@@ -415,10 +415,11 @@ RFC 9999                  R-Type Protocol                  November 2026
 
 
    o  Server to client: a request for the full input state, sent every
-      0.5 seconds with all fields 0. The client answers with five
-      PlayerInput packets for the same tick, Sequence 0 to 4, one per
-      input (up, down, left, right, fire), with the state it holds now.
-      A lost press or release is thus corrected within half a second.
+      0.5 seconds with all fields 0. The client answers with six
+      PlayerInput packets for the same tick, Sequence 0 to 5, one per
+      input (up, down, left, right, fire, force), with the state it
+      holds now. A lost press or release is thus corrected within half a
+      second.
 
    The server ignores an input for a tick it already simulated. Holding
    fire charges the shot; releasing it fires (Section 6.4).
@@ -449,7 +450,6 @@ RFC 9999                  R-Type Protocol                  November 2026
 
    o  Server to client: the client was removed from the game and SHOULD
       end its session.
-
 
 
 
@@ -534,22 +534,33 @@ RFC 9999                  R-Type Protocol                  November 2026
 
 6.2.  Entity Kinds
 
-   Kind  Name               Meaning
-   ----  -----------------  ----------
-   0     GENERIC            Nothing to draw. The level is such an entity
-                            (component Level).
-   1     PLAYER             A player's ship, coloured by
-                            PlayerStats.Slot.
-   2     ENEMY_PATA_PATA    Small enemy flying in waves.
-   3     ENEMY_SCANT        Enemy.
-   4     PLAYER_MISSILE     Missile shot by a player.
-   5     ENEMY_MISSILE      Missile shot by an enemy or a boss.
-   6-10  PLAYER_BEAM_1-5    Charged beam of a player, by charge level.
-   11    ENEMY_DOBKERATOPS  Stage 1 boss body: armored, takes no damage.
-   12    DOBKERATOPS_CORE   Stage 1 boss weak point: its Health is the
-                            boss health, its deletion is the boss death.
-   13    DOBKERATOPS_TAIL   Stage 1 boss tail segment: sweeps the
-                            screen, armored, hurts on contact.
+   Kind   Name               Meaning
+   -----  -----------------  ----------
+   0      GENERIC            Nothing to draw. The level is such an
+                             entity (component Level).
+   1      PLAYER             A player's ship, coloured by
+                             PlayerStats.Slot.
+   2      ENEMY_PATA_PATA    Small enemy flying in waves.
+   3      ENEMY_SCANT        Enemy.
+   4      PLAYER_MISSILE     Missile shot by a player.
+   5      ENEMY_MISSILE      Missile shot by an enemy or a boss.
+   6-10   PLAYER_BEAM_1-5    Charged beam of a player, by charge level.
+   11     ENEMY_DOBKERATOPS  Stage 1 boss body: armored, takes no
+                             damage.
+   12     DOBKERATOPS_CORE   Stage 1 boss weak point: its Health is the
+                             boss health, its deletion is the boss
+                             death.
+   13     DOBKERATOPS_TAIL   Stage 1 boss tail segment: sweeps the
+                             screen, armored, hurts on contact.
+   14     PICKUP_LIFE        Bonus life dropped by a killed enemy: the
+                             player who touches or shoots it gets one
+                             more life.
+   15     ENEMY_POW_ARMOR    Enemy carrying a Force item, dropped when
+                             it dies.
+   16     PICKUP_FORCE       The Force item: a Force for the player who
+                             takes it, or one more level.
+   17-19  FORCE_1-3          A player's Force (an attachable pod), by
+                             level; a new level is a new entity.
 
    New kinds are added at the end: existing values never change. A
    client SHOULD draw an unknown kind as a generic object rather than
@@ -562,17 +573,6 @@ RFC 9999                  R-Type Protocol                  November 2026
    components are added at the end: existing types never change. The
    server sends every component of every entity 20 times per second,
    except PlayerInput.
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -600,8 +600,8 @@ RFC 9999                  R-Type Protocol                  November 2026
    1     Movement     12    Direction 2 x f32, Speed f32.
    2     PathFinding  13    Type u8 (0 straight), Target Velocity 2 x
                             f32, Acceleration f32.
-   3     PlayerInput  1     u8 flags: bit 4 up, bit 3 down, bit 2 left,
-                            bit 1 right, bit 0 fire.
+   3     PlayerInput  1     u8 flags: bit 5 force, bit 4 up, bit 3 down,
+                            bit 2 left, bit 1 right, bit 0 fire.
    4     PlayerStats  7     Slot u8 (0 to 3, the player's colour), Lives
                             u8 (0: out of the game), Score u32, Charge
                             u8 (0 to 5, while fire is held).
@@ -619,7 +619,13 @@ RFC 9999                  R-Type Protocol                  November 2026
 
    o  Players: PlayerStats.Lives hearts, the score, and the charge level
       while the player charges. At Lives = 0 the player is out, and the
-      others play on.
+      others play on. A larger Lives is a bonus life taken
+      (PICKUP_LIFE); lives stop at 10.
+
+   o  Force: a FORCE_n entity follows its player's ship (in front or
+      behind) or flies on its own after the force input; the server
+      moves it, a client only draws it. Taking a PICKUP_FORCE creates
+      one, or replaces it with the next level.
 
    o  Charged shot: tap fire for a missile; hold it to charge (one level
       per 0.4 seconds, up to 5); release it to fire a beam
@@ -633,12 +639,6 @@ RFC 9999                  R-Type Protocol                  November 2026
       client SHOULD show it (text, sound, flash).
 
 7.  Protocol Behavior
-
-
-
-
-
-
 
 
 

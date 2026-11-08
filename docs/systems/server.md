@@ -14,7 +14,7 @@ Server/
   src/game/Requests/            entities the systems ask to create or delete
   src/game/Blueprints/          enemies and bosses as lists of components
   src/game/Waves/               stage files: parsing and loading
-  src/game/DevOptions/          --help, --god, --speed, --start
+  src/game/DevOptions/          --help, --god, --speed, --start, --drop-rate
   src/game/Rules.hpp            gameplay constants (speeds, sizes, lives...)
   src/components/               server-only components
   src/systems/                  server systems, listed in Tuple.hpp
@@ -66,15 +66,23 @@ every `n` from 1 until a file is missing:
 length 3797          # progression where the scrolling stops (pixels of stage-<n>.png)
 boss   dobkeratops   # blueprint of the boss; without it, the stage ends at its length
 
-# progression  type       y       movement
+# progression  type       y       movement  loot
 120            pata-pata  80      sine
-280            pata-pata  random  straight
+240            pata-pata  80      sine      life
+280            pata-pata  random  straight  life:0.5
+290            pow-armor  200     straight
 ```
 
 `y` is the top of the enemy in world units (0 at the top of the screen), or
 `random`: `StageSpawner` then draws a new height each time the enemy appears,
 between 40 and 374, so that an enemy moving along a sine stays on screen. The
 draw is seeded with the clock, so it changes in every game.
+
+Types: `pata-pata` (shoots at random, drops a life with
+`Rules::LIFE_DROP_CHANCE`, 0.1) and `pow-armor` (never shoots, always drops a
+Force item). `loot` is optional and changes what the enemy drops when a player
+kills it: `life` or `force` always drops that item, `life:<chance>` or
+`force:<chance>` with a chance from 0 to 1, `none` nothing.
 
 1. `Scrolling` advances `Level::progression` (30 background pixels per second)
    up to `length`.
@@ -105,6 +113,11 @@ enemy or a boss is a **blueprint** (`src/game/Blueprints`), not a class:
 | `Boss` | `BossDefeat` | Its death clears the stage |
 | `Swing` | `Swinging` | A part sweeping an arc around a point of its parent, like a tail segment |
 | `Enrage` | `PhaseChange` | Once its health is low enough: `BossPhase` 2, bigger bursts, faster swinging parts |
+| `Loot { item, chance }` | `Looting` | Killed by a player, it may drop a bonus (`Pickup`) where it was |
+| `Pickup { item }` | `Collecting` | A bonus: the player who touches it, or whose shot touches it, takes it |
+| `Force` | `ForceControl`, `ForceFire` | A player's Force: level, attached (front or back) or flying |
+| `ContactDamage { damage, interval }` | `ContactHits` | Hurts the enemies it touches, at most every `interval` |
+| `Shield` | `Shielding` | Destroys the enemy missiles it touches |
 
 The **Dobkeratops** (stage 1 boss) is its weak point (`Boss`, 60 `Health`,
 `AimedBursts` of 3 shots every 2 s, `StopAt`, `Enrage` at 20 HP) with an
@@ -122,6 +135,39 @@ a tail 1.5 times faster. See [Contributing](../contributing.md#add-an-enemy-or-a
   at its start, invulnerable for 2 seconds; at 0 lives it is out, and the
   others play on.
 
+## Bonuses
+
+An enemy killed by a player (a shot, or ramming it) may drop its `Loot`:
+`Collisions` records the kill in the requests, then `Looting` rolls the chance
+and spawns a `PICKUP_LIFE` where the enemy was. The bonus drifts left with the
+background (`Flight` removes it off screen). An enemy that leaves the screen, or
+is cleared with its stage, drops nothing.
+
+`Collecting` gives the bonus to the first player whose ship touches it, or
+whose shot touches it (a missile stops on it, a beam goes through). A bonus
+life adds one life, up to `Rules::MAX_LIVES` (10); a player who is out takes
+nothing. Clients see the new `PlayerStats::lives`.
+
+## The Force
+
+R-Type's attachable pod. A POW Armor drops a Force item; taking it gives a
+level 1 Force attached in front of the ship, the next ones levels 2 and 3
+(a bigger Force, created again as `FORCE_2`, `FORCE_3`), then 1000 points.
+
+- `ForceControl` keeps an attached Force at the front or the back of its ship.
+  The force input launches it straight ahead (backwards from the back): it
+  flies 250 units or to the screen edge, then floats there. Pressed again, it
+  flies back. Touching its ship, launched or not, it attaches on the side it
+  touches. A player who loses a life loses the Force.
+- It is invulnerable: `Shielding` destroys the enemy missiles it touches, and
+  `ContactHits` takes its level in hit points from the enemies it touches,
+  every 0.2 s (armored parts take nothing). A kill is a kill: score to its
+  player, and the enemy's loot drops. The shared `Game::damage` is used by
+  `Collisions` too.
+- `ForceFire`: attached, each missile its player fires comes with 1, 2 or 3
+  missiles of the Force (levels 2 and 3 fan out), forward from the front,
+  backward from the back.
+
 ## Command line
 
 ```text
@@ -134,6 +180,7 @@ Developer options (to test a level, never on a real server):
   --god            players never lose a life
   --speed <n>      the level scrolls n times faster (0 < n <= 50)
   --start <n>      the level starts at progression n (pixels of the stage background)
+  --drop-rate <p>  every enemy drops its bonus with chance p (0 <= p <= 1)
 ```
 
 An unknown option or a bad value prints the error and the usage, and exits
