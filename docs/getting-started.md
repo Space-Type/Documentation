@@ -63,7 +63,7 @@ level, and when everyone has left, the next player starts it over.
 | Program | Options |
 |---|---|
 | `r-type_client` | `-h <host>`, `-p <port>`, `-n <name>`, `--help` |
-| `r-type_server` | `--help`, and developer options to test a stage: `--god` (players never lose a life), `--speed <n>` (the level scrolls `n` times faster), `--start <n>` (start at progression `n`) |
+| `r-type_server` | `--help`, and developer options to test a stage: `--god` (players never lose a life), `--speed <n>` (the level scrolls `n` times faster), `--start <n>` (start at progression `n`), `--drop-rate <p>` (every enemy drops a bonus life with chance `p`) |
 
 The client finds its `assets/` folder next to the executable (or in the parent
 and grandparent folders), and the server its `assets/stages/` folder from the
@@ -88,6 +88,8 @@ Every game control can be changed in **Settings > Controls**; see
   end of stage 1. Kill its weak point, the creature in its chest.
 - Each player has **3 lives** (hearts in the top-left corner). A player with no
   life left is out, and the others play on.
+- Killed enemies sometimes drop a **red heart**: touch it or shoot it for one
+  more life (up to 10).
 - After the last stage, every player sees the **victory** screen with their
   score.
 

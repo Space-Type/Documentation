@@ -36,7 +36,7 @@ Windows) when the player leaves the settings screen.
 |---|---|
 | **High contrast mode**: a thick outline around every ship and enemy, white for players and orange for enemies, over the sprites and the busy stage backgrounds | Available (Settings > Accessibility) |
 | **Player names above the ships**: the four players are told apart by their name, not only by the colour of their ship | Available |
-| **Information never conveyed by colour alone**: lives are a number of hearts (and the last one blinks), the boss health bar also shows `hp / max`, the selected menu item has a thick border and a `>` marker | Available |
+| **Information never conveyed by colour alone**: lives are a number of hearts (and the last one blinks; above 5 lives, one heart and "x6", "x7"...), the boss health bar also shows `hp / max`, the selected menu item has a thick border and a `>` marker | Available |
 | **Readable interface**: light text on a dark background with a contrast ratio of at least 4.5:1 (checked by a unit test for every interface colour) | Available |
 | **The game scales with the window**: a fixed virtual resolution is scaled to any window size or to fullscreen, text included | Available |
 | Colour-blind palettes for the ships | Planned (names and outlines already make the ships distinct) |
@@ -52,6 +52,7 @@ muted:
 | Enemy hit, but not killed | The enemy blinks |
 | Explosion (enemy, boss, ship) | An explosion animation |
 | Life lost | Explosion, the ship blinks, one heart less in the HUD |
+| Bonus life taken | "+1 LIFE" rises over the ship, one heart more in the HUD |
 | Start of a stage | "LEVEL n" in big letters |
 | Boss getting angry (alarm) | "WARNING" in big letters, and the boss flashes |
 | Stage cleared | "STAGE CLEAR" in big letters with every player's score |

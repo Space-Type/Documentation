@@ -262,6 +262,7 @@ right after a join.
 | 11 | `ENEMY_DOBKERATOPS` | Stage 1 boss: its body (armored, it does not take damage) |
 | 12 | `ENEMY_DOBKERATOPS_CORE` | Stage 1 boss: its weak point. Its `Health` is the boss health; its deletion is the boss death |
 | 13 | `ENEMY_DOBKERATOPS_TAIL` | Stage 1 boss: a segment of its tail, sweeping the screen; armored, it hurts on contact |
+| 14 | `PICKUP_LIFE` | Bonus life dropped by a killed enemy, drifting left: the player who touches it, or shoots it, gets one more life |
 
 New kinds are added at the end: existing values never change.
 
@@ -290,7 +291,8 @@ sends every component of every entity 20 times per second, except
 ### 6.4 Gameplay the client shows
 
 - **Players**: `PlayerStats.lives` hearts, `score`, and `charge` while the
-  player charges. At `lives = 0` the player is out: the others play on.
+  player charges. At `lives = 0` the player is out: the others play on. A
+  larger `lives` is a bonus life taken (`PICKUP_LIFE`); lives stop at 10.
 - **Charged shot**: tap fire for a missile; hold it to charge (one level per
   0.4 s, up to 5), release to fire a beam (`PLAYER_BEAM_n`).
 - **Level**: one `GENERIC` entity with `Level`. A change of `stage` starts a

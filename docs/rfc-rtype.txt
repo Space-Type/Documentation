@@ -550,6 +550,9 @@ RFC 9999                  R-Type Protocol                  November 2026
                             boss health, its deletion is the boss death.
    13    DOBKERATOPS_TAIL   Stage 1 boss tail segment: sweeps the
                             screen, armored, hurts on contact.
+   14    PICKUP_LIFE        Bonus life dropped by a killed enemy: the
+                            player who touches or shoots it gets one
+                            more life.
 
    New kinds are added at the end: existing values never change. A
    client SHOULD draw an unknown kind as a generic object rather than
@@ -562,9 +565,6 @@ RFC 9999                  R-Type Protocol                  November 2026
    components are added at the end: existing types never change. The
    server sends every component of every entity 20 times per second,
    except PlayerInput.
-
-
-
 
 
 
@@ -619,7 +619,8 @@ RFC 9999                  R-Type Protocol                  November 2026
 
    o  Players: PlayerStats.Lives hearts, the score, and the charge level
       while the player charges. At Lives = 0 the player is out, and the
-      others play on.
+      others play on. A larger Lives is a bonus life taken
+      (PICKUP_LIFE); lives stop at 10.
 
    o  Charged shot: tap fire for a missile; hold it to charge (one level
       per 0.4 seconds, up to 5); release it to fire a beam
@@ -633,7 +634,6 @@ RFC 9999                  R-Type Protocol                  November 2026
       client SHOULD show it (text, sound, flash).
 
 7.  Protocol Behavior
-
 
 
 
