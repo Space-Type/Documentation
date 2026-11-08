@@ -166,8 +166,9 @@ death of an enemy or a player (explosion) when its entity is deleted.
 
 ### 5.7 `Ping` (type 6)
 
-No payload. A client MUST answer a `Ping` with a `Ping`. It is reserved to check
-that a peer is still there (section 8).
+No payload. The server sends one to every player **every second**, and a
+client MUST answer it with a `Ping`. A player the server has heard nothing from
+(no `Ping`, no other packet) for **5 seconds** is considered gone (section 7.1).
 
 ### 5.8 `PlayerId` (type 7)
 
@@ -308,7 +309,11 @@ sequenceDiagram
         S->>C: EntityComponentData (every shared component)
         S->>O: EntityComponentData
     end
-    C->>S: PlayerLeave
+    loop every second
+        S->>C: Ping
+        C->>S: Ping
+    end
+    C->>S: PlayerLeave (or 5 s of silence)
     S->>O: EntityDelete(id)
 ```
 
@@ -320,6 +325,10 @@ sequenceDiagram
    first player to join starts the level; when the last player leaves, the
    server deletes every entity and the level starts over with the next player.
 3. To quit, the client sends `PlayerLeave`.
+4. If a client crashes or loses its connection, it stops answering. The server
+   removes a player it has received nothing from for 5 seconds, exactly as if
+   it had sent `PlayerLeave`: the other clients get its `EntityDelete`, and the
+   game goes on.
 
 ### 7.2 Ticks and clock synchronization
 
@@ -409,11 +418,12 @@ a millisecond.
 
 ### Known gaps of the reference implementation
 
-These are planned fixes; a new implementation SHOULD do better:
+These are planned fixes; a new implementation SHOULD do better. (The removal of
+silent players, section 7.1, was one of them: fixed in
+[Server#49](https://github.com/Space-Type/Server/pull/49).)
 
 | Gap | Effect | Planned fix |
 |---|---|---|
-| No timeout: the server only removes a player who sends `PlayerLeave` | A crashed client keeps its ship in the game | The server sends `Ping` and removes a player silent for 5 s |
 | No player limit | More than 4 players can join | Refuse a fifth player with `PlayerId(0)` |
 | Player names are not filtered | A name may hold control characters, written to the server log | Accept only printable characters |
 | The `EntityList` length check counts the header as 4 bytes instead of 8 | A malformed list may read up to 4 bytes of the receive buffer past the datagram (never past the buffer) | Fix the check in Protecs |

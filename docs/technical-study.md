@@ -273,9 +273,12 @@ component type), half from a stranger and half from a joined player:
 |---|---|---|---|---|
 | 100 000 | 44 306 | **none** | yes, in < 1 ms | 5.3 → 9.4 MiB |
 
-The test also found weaknesses, listed with their fixes in the
-[protocol](protocol.md#known-gaps-of-the-reference-implementation): a crashed
-client is never removed (no timeout), there is no limit of 4 players, player
+Writing the protocol also showed that a crashed client was never removed: the
+server now pings every player each second and removes one silent for 5 seconds
+([Server#49](https://github.com/Space-Type/Server/pull/49)). The test also found
+weaknesses, listed with their fixes in the
+[protocol](protocol.md#known-gaps-of-the-reference-implementation): there is no
+limit of 4 players, player
 names may hold control characters, the `EntityList` size check is 4 bytes too
 lenient, the server log is written by two threads at once (lines may mix), and
 the server memory keeps growing with repeated floods (about 2 to 4 MiB per
