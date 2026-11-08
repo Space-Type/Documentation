@@ -35,9 +35,17 @@ SERVER_PID=$(pgrep r-type_server) ./benchmarks/build/rtype_bench fuzz 127.0.0.1 
 
 `loss` drops the datagrams inside the benchmark (no root rights needed), on the
 way from the server to the client. To degrade the real link instead, as the
-subject suggests, use `netem` on Linux:
+subject's appendix suggests, `netem.sh` runs the server and the bandwidth
+benchmark under three conditions (normal; 150 ms delay with 2 % loss and 2 %
+duplication; the same limited to 5 kB/s). Only `tc` runs as root:
 
 ```sh
-sudo tc qdisc add dev lo root netem loss 10% delay 50ms 10ms
+benchmarks/netem.sh ../Server/build/r-type_server         # optional: CLIENT_CMD="./r-type_client"
+```
+
+By hand:
+
+```sh
+sudo tc qdisc add dev lo root netem delay 150ms 20ms loss 2% duplicate 2%
 sudo tc qdisc del dev lo root                                  # back to normal
 ```
