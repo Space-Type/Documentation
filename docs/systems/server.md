@@ -14,7 +14,7 @@ Server/
   src/game/Requests/            entities the systems ask to create or delete
   src/game/Blueprints/          enemies and bosses as lists of components
   src/game/Waves/               stage files: parsing and loading
-  src/game/DevOptions/          --help, --god, --speed, --start, --drop-rate
+  src/game/DevOptions/          --help, --god, --speed, --stage, --start, --drop-rate
   src/game/Rules.hpp            gameplay constants (speeds, sizes, lives...)
   src/components/               server-only components
   src/systems/                  server systems, listed in Tuple.hpp
@@ -123,7 +123,18 @@ The **Dobkeratops** (stage 1 boss) is its weak point (`Boss`, 60 `Health`,
 `AimedBursts` of 3 shots every 2 s, `StopAt`, `Enrage` at 20 HP) with an
 `Armored` body and a tail of 10 `Armored` segments that `Swing` in a whip-like
 arc, all attached to it. At 20 HP it gets angry: bursts of 5 shots every 1.5 s,
-a tail 1.5 times faster. See [Contributing](../contributing.md#add-an-enemy-or-a-boss) to add one.
+a tail 1.5 times faster.
+
+The **Gomander** (stage 2 boss, lying on the cave floor) is its eye (`Boss`,
+50 `Health`, `AimedBursts` of 3 shots every 2 s from the eye, `StopAt`,
+`Enrage` at 16 HP) with an `Armored` body under it, attached to it. At 16 HP
+it gets angry: bursts of 5 shots every 1.5 s. See
+[Contributing](../contributing.md#add-an-enemy-or-a-boss) to add a boss.
+
+There are two stages: `stage-1.waves` (open space, the Dobkeratops) and
+`stage-2.waves` (the cave, the Gomander). In the cave, enemies stay between
+the ceiling and the floor of the background: their heights are fixed, none is
+`random`.
 
 ## Shooting and collisions
 
@@ -179,6 +190,7 @@ Options:
 Developer options (to test a level, never on a real server):
   --god            players never lose a life
   --speed <n>      the level scrolls n times faster (0 < n <= 50)
+  --stage <n>      the level starts at stage n (1 <= n <= the number of stage files)
   --start <n>      the level starts at progression n (pixels of the stage background)
   --drop-rate <p>  every enemy drops its bonus with chance p (0 <= p <= 1)
 ```

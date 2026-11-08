@@ -266,6 +266,8 @@ right after a join.
 | 15 | `ENEMY_POW_ARMOR` | Enemy carrying a Force item, dropped when it dies |
 | 16 | `PICKUP_FORCE` | The Force item, drifting left: a Force for the player who takes it, or one more level |
 | 17 to 19 | `FORCE_1` to `FORCE_3` | A player's Force (an attachable pod), by level; a new level is a new entity |
+| 20 | `ENEMY_GOMANDER` | Stage 2 boss: its body (armored, it does not take damage) |
+| 21 | `ENEMY_GOMANDER_CORE` | Stage 2 boss: its eye, the weak point. Its `Health` is the boss health; its deletion is the boss death |
 
 New kinds are added at the end: existing values never change.
 
@@ -304,8 +306,9 @@ sends every component of every entity 20 times per second, except
   0.4 s, up to 5), release to fire a beam (`PLAYER_BEAM_n`).
 - **Level**: one `GENERIC` entity with `Level`. A change of `stage` starts a
   new stage; `won = true` ends the game with a victory.
-- **Boss**: `Health` of the `ENEMY_DOBKERATOPS_CORE` entity is the boss health. When its
-  `BossPhase` goes up, the boss gets angry: a client SHOULD show it (text, sound, flash).
+- **Boss**: `Health` of the boss core (`ENEMY_DOBKERATOPS_CORE` in stage 1,
+  `ENEMY_GOMANDER_CORE` in stage 2) is the boss health. When its `BossPhase`
+  goes up, the boss gets angry: a client SHOULD show it (text, sound, flash).
 
 ## 7. Behaviour
 

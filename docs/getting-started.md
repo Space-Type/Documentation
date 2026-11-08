@@ -63,7 +63,7 @@ level, and when everyone has left, the next player starts it over.
 | Program | Options |
 |---|---|
 | `r-type_client` | `-h <host>`, `-p <port>`, `-n <name>`, `--help` |
-| `r-type_server` | `--help`, and developer options to test a stage: `--god` (players never lose a life), `--speed <n>` (the level scrolls `n` times faster), `--start <n>` (start at progression `n`), `--drop-rate <p>` (every enemy drops a bonus life with chance `p`) |
+| `r-type_server` | `--help`, and developer options to test a stage: `--god` (players never lose a life), `--speed <n>` (the level scrolls `n` times faster), `--stage <n>` (start at stage `n`), `--start <n>` (start at progression `n`), `--drop-rate <p>` (every enemy drops a bonus life with chance `p`) |
 
 The client finds its `assets/` folder next to the executable (or in the parent
 and grandparent folders), and the server its `assets/stages/` folder from the
@@ -85,8 +85,9 @@ Every game control can be changed in **Settings > Controls**; see
 
 ### Playing
 
-- Clear the waves of Bydos while the stage scrolls; the **boss** waits at the
-  end of stage 1. Kill its weak point, the creature in its chest.
+- Clear the waves of Bydos while the stage scrolls; a **boss** waits at the
+  end of each stage. In stage 1, kill the Dobkeratops's weak point, the
+  creature in its chest; in stage 2 (the cave), the Gomander's eye.
 - Each player has **3 lives** (hearts in the top-left corner). A player with no
   life left is out, and the others play on.
 - Killed enemies sometimes drop a **red heart**: touch it or shoot it for one
