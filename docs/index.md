@@ -36,6 +36,8 @@ The project is split into several repositories, gathered in
 | [Documentation](https://github.com/Space-Type/Documentation) | This site |
 
 !!! note "Project status"
-    The project is under active development. Pages describe what exists in the
-    code today, and features that are not implemented yet are explicitly marked
-    as **planned**.
+    Stage 1 is playable from start to end with up to four players: waves of
+    Bydos, the charged shot, the Dobkeratops boss, and a victory screen. More
+    stages are text files away (see [Contributing](contributing.md#add-a-stage)).
+    Pages describe what exists in the code, and what is not implemented yet is
+    explicitly marked as **planned**.
