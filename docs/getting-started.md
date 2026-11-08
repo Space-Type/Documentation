@@ -2,14 +2,13 @@
 
 ## Requirements
 
-Supported platforms: **Linux** and **Windows**. Both are built in CI on every
-pull request.
+Supported platforms: **Linux** and **Windows**. Both are built and tested in CI
+on every pull request.
 
 ### Linux
 
 - A C++23 compiler (GCC 14 or newer)
-- CMake 3.20 or newer
-- git, curl, zip, unzip, tar and pkg-config, used by vcpkg to bootstrap itself
+- CMake 3.20 or newer, and git
 - OpenGL and X11 development packages, used by raylib:
 
 ```sh
@@ -25,8 +24,8 @@ sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev libxcu
   which also provides CMake)
 - git
 
-Every other dependency is fetched by the build: see
-[Technical study](technical-study.md#build-system-and-dependencies).
+Every other dependency comes with the sources (git submodules) or is fetched by
+the build: see [Technical study](technical-study.md#build-system-and-dependencies).
 
 ## Build
 
@@ -39,35 +38,58 @@ cmake --build build --parallel
 
 `r-type_server` and `r-type_client` are written at the root of the repository,
 with the client assets next to them. If the repository was cloned without
-`--recursive`, the first `cmake` fetches the submodules itself.
+`--recursive`, run `git submodule update --init --recursive` first.
 
 On Windows, Visual Studio builds several configurations from the same build
-folder: pick one with `--config`, and the binaries are `r-type_server.exe` and
+folder: pick one with `--config`; the binaries are `r-type_server.exe` and
 `r-type_client.exe`:
 
 ```sh
-cmake -S . -B build
 cmake --build build --config Release --parallel
 ```
 
 ## Run
 
 ```sh
-./r-type_server    # listens on UDP port 5432
-./r-type_client
+./r-type_server                                # listens on UDP port 5432
+./r-type_client -h 127.0.0.1 -p 5432 -n Alice  # each option is optional
 ```
 
+The client opens on the **connection screen**, filled with the options
+(defaults: `127.0.0.1`, `5432`, `Player`): change them if needed, then
+**Connect**. Up to four players play the same game; the first one starts the
+level, and when everyone has left, the next player starts it over.
+
+| Program | Options |
+|---|---|
+| `r-type_client` | `-h <host>`, `-p <port>`, `-n <name>`, `--help` |
+| `r-type_server` | `--help`, and developer options to test a stage: `--god` (players never lose a life), `--speed <n>` (the level scrolls `n` times faster), `--start <n>` (start at progression `n`) |
+
 The client finds its `assets/` folder next to the executable (or in the parent
-and grandparent folders), so it can be started from any directory.
+and grandparent folders), and the server its `assets/stages/` folder from the
+current directory or one of its parents, so both can be started from anywhere
+in the repository.
+
+### Controls
 
 | Action | Keyboard | Gamepad |
 |---|---|---|
 | Move | Arrow keys | D-pad or left stick |
-| Shoot (hold to keep firing) | Space | A |
+| Shoot | Space: tap for a missile, **hold to charge** and release for a beam | A |
+| Pause menu (settings, quit) | Escape | Start |
+| Menus | Arrows, Enter, Escape | D-pad, A, B |
 
-!!! note
-    The client and the server do not talk to each other yet: the client runs
-    a local game for now (see [Client](systems/client.md#current-state-and-next-steps)).
+Every game control can be changed in **Settings > Controls**; see
+[Accessibility](accessibility.md) for the other settings.
+
+### Playing
+
+- Clear the waves of Bydos while the stage scrolls; the **boss** waits at the
+  end of stage 1. Kill its weak point, the creature in its chest.
+- Each player has **3 lives** (hearts in the top-left corner). A player with no
+  life left is out, and the others play on.
+- After the last stage, every player sees the **victory** screen with their
+  score.
 
 ## Working on one component
 
@@ -85,9 +107,9 @@ cmake --build build-tests --parallel
 ctest --test-dir build-tests --output-on-failure
 ```
 
-Wrecks and the client run their unit tests with GoogleTest in a dedicated
-`DebugTests` build type, so regular builds never download or compile the test
-framework.
+Wrecks, Protecs and the client run their unit tests with GoogleTest in a
+dedicated `DebugTests` build type, so regular builds never download or compile
+the test framework.
 
 ## Previewing this documentation
 
