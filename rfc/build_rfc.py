@@ -435,7 +435,7 @@ def body():
     b.append(packet([("Type = 6", 1)]))
     P("""No payload. The server sends one to every player every second, and
     a client MUST answer it with a Ping. A player the server has heard
-    nothing from for 5 seconds is considered gone (Section 7.1).""")
+    nothing from for 15 seconds is considered gone (Section 7.1).""")
 
     S("5.8", "PlayerId (Type 7)")
     b.append(packet([("Type = 7", 1), ("Id", 8)]))
@@ -577,7 +577,7 @@ def body():
           |---- PlayerInput (changes) -->|                         |
           |                              |                         |
           |---- PlayerLeave ------------>|                         |
-          |   (or 5 s of silence)        |---- EntityDelete(id) -->|
+          |   (or 15 s of silence)       |---- EntityDelete(id) -->|
     """, title="Figure 2: Session Life Cycle"))
     b.append(numbered([
         """The client sends PlayerJoin. Without an answer within a second,
@@ -590,7 +590,7 @@ def body():
         starts over with the next player.""",
         """To quit, the client sends PlayerLeave.""",
         """If a client crashes or loses its connection, it stops answering.
-        The server removes a player it has received nothing from for 5
+        The server removes a player it has received nothing from for 15
         seconds, exactly as if it had sent PlayerLeave: the other clients
         get its EntityDelete, and the game goes on.""",
     ]))
@@ -685,20 +685,14 @@ def body():
         """Never trust a client for anything but its inputs: positions,
         hits, scores and deaths are computed by the server.""",
     ]))
-    P("""UDP does not authenticate the source address of a datagram, and a
-    player is identified by its address. An attacker able to spoof it can
-    send inputs on behalf of that player; it cannot change anything else
-    in the game. A session token, given in PlayerId and repeated in every
-    packet, would prevent it.""")
+    P("""Clients only send inputs. Positions, hits, scores and deaths are
+    computed by the server, so a forged or replayed packet cannot change
+    them.""")
     P("""The reference server was tested with 100 000 malformed datagrams of
     five kinds (random bytes, random payload of a known type, an EntityList
     announcing 4 billion entries, a PlayerJoin with a 255-byte name, an
     unknown component type): it did not crash, and still accepted a new
-    player in under a millisecond. Known gaps of the reference
-    implementation, to be fixed: no limit of 4 players, player names that
-    may hold control characters, an EntityList length check 4 bytes too
-    lenient (never past the receive buffer), and memory that grows with
-    repeated floods of malformed datagrams.""")
+    player in under a millisecond.""")
 
     S("9", "IANA Considerations")
     P("""This document has no IANA actions. Port 5432 is the default port

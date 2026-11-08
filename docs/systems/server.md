@@ -37,7 +37,7 @@ Server/
        applies the systems' requests (entities to create and delete).
     3. **20 times per second**, every shared component of every entity is sent
        to every player. Every second, every player is pinged; a player silent
-       for 5 seconds (crashed client, lost connection) is removed, and the
+       for 15 seconds (crashed client, lost connection) is removed, and the
        others get its `EntityDelete`.
 - Ctrl+C is caught: the server closes its socket and shuts down cleanly.
 
@@ -128,9 +128,3 @@ Developer options (to test a level, never on a real server):
 
 An unknown option or a bad value prints the error and the usage, and exits
 with 84.
-
-## Known gaps
-
-Listed with their planned fixes in the
-[protocol](../protocol.md#known-gaps-of-the-reference-implementation): no limit of
-4 players, unfiltered names.

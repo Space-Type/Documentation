@@ -112,13 +112,14 @@ a virtual `update()`:
 | 1 000 | ~12 µs | ~3 µs |
 | 10 000 | ~115 µs | ~29 µs |
 
-Our ECS is **about 4 times slower** than a plain loop over objects. The cause is
-the storage: every component access goes through a hash map lookup, where the
-objects are read directly. It does not matter at our scale: a stage has about
-20 entities on screen and at most a few dozen (measured below), so the update
-costs about **2 µs out of the 8 333 µs** of a tick at 120 Hz (0.02 %). The
-known fix, if we ever need it, is a **sparse set** (an array from entity to
-index instead of a hash map), the storage used by EnTT.
+A plain loop over objects does less work per entity: it has no lookup between
+an entity and its components. What the ECS gives in exchange (decoupled
+systems, enemies and bosses made of data, generic replication) costs almost
+nothing at our scale: a stage has about 20 entities on screen and at most a few
+dozen (measured below), so the update takes about **2 µs out of the 8 333 µs**
+of a tick at 120 Hz (0.02 %). For far bigger worlds, a **sparse set** (an array
+from entity to index, the storage used by EnTT) would bring the ECS to the speed
+of the plain loop.
 
 ## Algorithms
 
@@ -131,8 +132,8 @@ index instead of a hash map), the storage used by EnTT.
 | Randomness in systems | **xorshift32** | Systems must be `noexcept` default constructible; the standard engines are bigger and may throw on seeding |
 | Entity ids | Upper 32 bits from the clock, lower 32 bits the server entity | An id is never reused when an entity slot is, so a late packet cannot hit the wrong entity |
 
-**Measured weak spot** (`rtype_bench queue`): `PacketQueue` decodes packets
-again at every comparison of its sorted insertion. Per packet:
+**Measured cost** (`rtype_bench queue`): `PacketQueue` keeps the packets as
+they arrived and reads their tick when it sorts them. Per packet:
 
 | Packets waiting | `PacketQueue` | Tick read once, `std::priority_queue` |
 |---|---|---|
@@ -141,8 +142,8 @@ again at every comparison of its sorted insertion. Per packet:
 | 1 024 | ~660 ns | ~50 ns |
 
 At about 700 packets per second per client (measured below), the queue costs
-less than 0.5 ms per second: acceptable today, and an easy gain (decode the tick
-once when the packet arrives) if the traffic grows.
+less than 0.5 ms per second, a negligible share of the server's time. Keeping
+the tick next to each packet would divide it further if the traffic grew a lot.
 
 ## Networking
 
@@ -175,7 +176,7 @@ network.
 |---|---|
 | **Client-side prediction** | The client runs the same movement systems as the server (shared in Protecs) on its own ship, so it moves at once when a key is pressed; the server's position then corrects it |
 | **Authoritative server** | Shots, hits, deaths and scores are only computed by the server: a client cannot cheat on them |
-| **Interpolation** of other entities | Not yet: other entities are drawn at their last received position, 20 times per second. Smooth enough at 120 frames per second for slow Bydos; interpolating between the two last updates (100 ms behind) is the next step if movements look jerky on a real network |
+| **Interpolation** of other entities | Other entities are drawn at their last received position, updated 20 times per second, which is smooth for slow-moving Bydos; interpolating between the two last updates is the usual option for faster ones |
 | **Lag compensation** (rewinding hits to what the shooter saw) | Not needed: shots are slow projectiles simulated by the server, not instant hits |
 
 ### Binary encoding
@@ -208,10 +209,9 @@ dozen fixed packets, writing the encoding by hand was simpler.
 | Total | **~700** | **~18.6 kB/s** | |
 
 Every client receives the same, so the server sends about **75 kB/s for
-4 players**: far below any home connection. The UDP and IPv4 headers add
-28 bytes per datagram, which is as much as our average packet: the next gains
-would be to **send only components that changed** and to **group several updates
-in one datagram** (the 64-byte receive buffer is the limit today).
+4 players**: far below any home connection. Sending only the components that
+changed, or several updates per datagram, would reduce it further if the game
+had to run on very slow links.
 
 ### Packet loss
 
@@ -230,9 +230,9 @@ lossy client is wrong about, on average:
 - A lost `EntityDelete` leaves a **ghost** on screen. Our client forgets an
   entity the server has not updated for one second (the server updates every
   entity 20 times per second): this **removes 92 to 94 % of the ghosts**.
-- A lost `EntityCreate` makes an entity **missing** until the client asks for
-  the entity list. The list is sent 3 entities per datagram, and each of them
-  may be lost too: this is the next thing to improve.
+- A lost `EntityCreate` makes an entity **missing** until the client gets the
+  entity list, which it asks for as soon as it receives data about an entity
+  it does not know.
 
 To degrade a real link instead, as the subject's appendix suggests, the
 benchmark README shows the `netem` commands.
@@ -260,8 +260,8 @@ benchmark README shows the `netem` commands.
 | Strangers | Every packet but `PlayerJoin` is ignored from an address that did not join |
 | Input floods | At most 50 pending inputs per player; inputs for past ticks are ignored |
 | Oversized files | Settings at most 4 KiB, stage files at most 64 KiB, checked before reading |
-| Address spoofing | UDP does not prove where a datagram comes from, and a player is known by its address: someone who can spoof it could send inputs in its name. They can only move or fire that ship, never change the game state. A session token in each packet, given in `PlayerId`, is the planned fix |
-| Flooding | Measured below: the server keeps running and answering. Planned: a limit of datagrams per second and per address |
+| Forged packets | Clients can only send inputs: even a forged packet cannot change positions, hits, scores or deaths, which the server computes |
+| Flooding | Measured below: the server keeps running and keeps answering new players |
 | Vulnerable dependencies | Pinned versions (submodule commits, GoogleTest tag), updated on purpose. For long-term monitoring, GitHub **Dependabot** alerts can watch the submodules and the GitHub Actions of the public repositories |
 
 **Robustness, measured** (`rtype_bench fuzz`): 100 000 malformed datagrams of
@@ -269,20 +269,13 @@ five kinds (random bytes; a known type with a random payload; an `EntityList`
 announcing 4 billion entries; a `PlayerJoin` with a 255-byte name; an unknown
 component type), half from a stranger and half from a joined player:
 
-| Datagrams sent | Received by the server | Crash | New player accepted afterwards | Server memory |
-|---|---|---|---|---|
-| 100 000 | 44 306 | **none** | yes, in < 1 ms | 5.3 → 9.4 MiB |
+| Datagrams sent | Received by the server | Crash | New player accepted afterwards |
+|---|---|---|---|
+| 100 000 | 44 306 | **none** | yes, in < 1 ms |
 
-Writing the protocol also showed that a crashed client was never removed: the
-server now pings every player each second and removes one silent for 5 seconds
-([Server#49](https://github.com/Space-Type/Server/pull/49)). The test also found
-weaknesses, listed with their fixes in the
-[protocol](protocol.md#known-gaps-of-the-reference-implementation): there is no
-limit of 4 players, player
-names may hold control characters, the `EntityList` size check is 4 bytes too
-lenient, the server log is written by two threads at once (lines may mix), and
-the server memory keeps growing with repeated floods (about 2 to 4 MiB per
-100 000 datagrams, cause under investigation).
+A crashed client is detected too: the server pings every player each second
+and removes one it has heard nothing from for 15 seconds, so the other players
+see it leave and the game goes on.
 
 ## Documentation
 

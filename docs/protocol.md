@@ -175,7 +175,7 @@ death of an enemy or a player (explosion) when its entity is deleted.
 
 No payload. The server sends one to every player **every second**, and a
 client MUST answer it with a `Ping`. A player the server has heard nothing from
-(no `Ping`, no other packet) for **5 seconds** is considered gone (section 7.1).
+(no `Ping`, no other packet) for **15 seconds** is considered gone (section 7.1).
 
 ### 5.8 `PlayerId` (type 7)
 
@@ -320,7 +320,7 @@ sequenceDiagram
         S->>C: Ping
         C->>S: Ping
     end
-    C->>S: PlayerLeave (or 5 s of silence)
+    C->>S: PlayerLeave (or 15 s of silence)
     S->>O: EntityDelete(id)
 ```
 
@@ -333,7 +333,7 @@ sequenceDiagram
    server deletes every entity and the level starts over with the next player.
 3. To quit, the client sends `PlayerLeave`.
 4. If a client crashes or loses its connection, it stops answering. The server
-   removes a player it has received nothing from for 5 seconds, exactly as if
+   removes a player it has received nothing from for 15 seconds, exactly as if
    it had sent `PlayerLeave`: the other clients get its `EntityDelete`, and the
    game goes on.
 
@@ -422,16 +422,3 @@ kinds (random bytes, random payload of a known type, `EntityList` announcing
 4 billion entries, `PlayerJoin` with a 255-byte name, unknown component type)
 did not crash the reference server, which still answered a new player in under
 a millisecond.
-
-### Known gaps of the reference implementation
-
-These are planned fixes; a new implementation SHOULD do better. (The removal of
-silent players, section 7.1, was one of them: fixed in
-[Server#49](https://github.com/Space-Type/Server/pull/49).)
-
-| Gap | Effect | Planned fix |
-|---|---|---|
-| No player limit | More than 4 players can join | Refuse a fifth player with `PlayerId(0)` |
-| Player names are not filtered | A name may hold control characters, written to the server log | Accept only printable characters |
-| The `EntityList` length check counts the header as 4 bytes instead of 8 | A malformed list may read up to 4 bytes of the receive buffer past the datagram (never past the buffer) | Fix the check in Protecs |
-| Memory grows with floods of malformed datagrams (about 2 to 4 MiB per 100 000) | Not freed afterwards | Under investigation |

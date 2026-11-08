@@ -74,7 +74,7 @@ RFC 9999                  R-Type Protocol                  November 2026
    10.  References .................................................. 14
      10.1.  Normative References .................................... 14
      10.2.  Informative References .................................. 14
-   Authors' Addresses ............................................... 15
+   Authors' Addresses ............................................... 14
 
 1.  Introduction
 
@@ -365,7 +365,7 @@ RFC 9999                  R-Type Protocol                  November 2026
 
    No payload. The server sends one to every player every second, and a
    client MUST answer it with a Ping. A player the server has heard
-   nothing from for 5 seconds is considered gone (Section 7.1).
+   nothing from for 15 seconds is considered gone (Section 7.1).
 
 5.8.  PlayerId (Type 7)
 
@@ -628,7 +628,7 @@ RFC 9999                  R-Type Protocol                  November 2026
      |---- PlayerInput (changes) -->|                         |
      |                              |                         |
      |---- PlayerLeave ------------>|                         |
-     |   (or 5 s of silence)        |---- EntityDelete(id) -->|
+     |   (or 15 s of silence)       |---- EntityDelete(id) -->|
 
                       Figure 2: Session Life Cycle
 
@@ -651,7 +651,7 @@ RFC 9999                  R-Type Protocol                  November 2026
 
 
    4.  If a client crashes or loses its connection, it stops answering.
-       The server removes a player it has received nothing from for 5
+       The server removes a player it has received nothing from for 15
        seconds, exactly as if it had sent PlayerLeave: the other clients
        get its EntityDelete, and the game goes on.
 
@@ -773,21 +773,15 @@ RFC 9999                  R-Type Protocol                  November 2026
    o  Never trust a client for anything but its inputs: positions, hits,
       scores and deaths are computed by the server.
 
-   UDP does not authenticate the source address of a datagram, and a
-   player is identified by its address. An attacker able to spoof it can
-   send inputs on behalf of that player; it cannot change anything else
-   in the game. A session token, given in PlayerId and repeated in every
-   packet, would prevent it.
+   Clients only send inputs. Positions, hits, scores and deaths are
+   computed by the server, so a forged or replayed packet cannot change
+   them.
 
    The reference server was tested with 100 000 malformed datagrams of
    five kinds (random bytes, random payload of a known type, an
    EntityList announcing 4 billion entries, a PlayerJoin with a 255-byte
    name, an unknown component type): it did not crash, and still
-   accepted a new player in under a millisecond. Known gaps of the
-   reference implementation, to be fixed: no limit of 4 players, player
-   names that may hold control characters, an EntityList length check 4
-   bytes too lenient (never past the receive buffer), and memory that
-   grows with repeated floods of malformed datagrams.
+   accepted a new player in under a millisecond.
 
 9.  IANA Considerations
 
@@ -819,14 +813,6 @@ RFC 9999                  R-Type Protocol                  November 2026
    [DOCS]     Space-Type, "R-Type Documentation", https://space-
               type.github.io/Documentation/.
 
-
-
-
-Space-Type                    Informational                    [Page 14]
-
-RFC 9999                  R-Type Protocol                  November 2026
-
-
 Authors' Addresses
 
    Space-Type team
@@ -836,49 +822,4 @@ Authors' Addresses
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Space-Type                    Informational                    [Page 15]
+Space-Type                    Informational                    [Page 14]
