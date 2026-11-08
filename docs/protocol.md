@@ -355,6 +355,30 @@ instead:
   this removes about 92 % of the entities that would otherwise stay on screen
   after their deletion.
 
+### 7.4 Example exchange
+
+Alice joins, the server gives her the id `0x1a2b3c4d00000007`, she holds fire,
+and an enemy dies. Bytes in hexadecimal, as sent on the wire:
+
+| Direction | Packet | Bytes |
+|---|---|---|
+| client → server | `PlayerJoin("alice")` | `09` `05` `61 6c 69 63 65` |
+| server → client | `PlayerId(0x1a2b3c4d00000007)` | `07` `07 00 00 00 4d 3c 2b 1a` |
+| server → client | `EntityComponentData`, tick 1000, her `Transform`: position (123.5, 67.25), rotation 0, scale 1 | `00` `e8 03 00 00` `07 00 00 00 4d 3c 2b 1a` `05 00` `00 00 f7 42` `00 80 86 42` `00 00 00 00` `00 00 80 3f` |
+| client → server | `PlayerInput`, tick 1012, sequence 0, fire, pressed | `08` `f4 03 00 00` `00` `04` `00` |
+| server → client | `EntityDelete`, tick 0 (now), entity `0x1a2b3c4d00000009` | `02` `00 00 00 00` `09 00 00 00 4d 3c 2b 1a` |
+
+### 7.5 Why no acknowledgements
+
+The protocol has **no sequence numbers, acknowledgements or retransmissions**.
+Everything the server sends is either repeated anyway (component values, 20
+times per second; inputs, on request every 0.5 s) or can be recovered on demand
+(the entity list). A retransmitted packet would arrive later than the next
+repetition, so acknowledgements would only add traffic and delay. Events that
+must not be missed are deduced from the state: a death is the deletion of an
+entity, a lost life is a smaller `PlayerStats.lives`, a victory is
+`Level.won`.
+
 ## 8. Validation and security
 
 A peer receives datagrams from anyone. Before using a packet, a receiver
