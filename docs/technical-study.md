@@ -234,8 +234,22 @@ lossy client is wrong about, on average:
   entity list, which it asks for as soon as it receives data about an entity
   it does not know.
 
-To degrade a real link instead, as the subject's appendix suggests, the
-benchmark README shows the `netem` commands.
+### Degraded network (netem)
+
+`benchmarks/netem.sh`: the real link is degraded with Linux `netem`, as the
+subject's appendix suggests. A real client plays while `rtype_bench bandwidth`
+measures what a client receives for 30 s, and the round trip time of `TickSync`:
+
+| Link | Received | Round trip (median) | Game |
+|---|---|---|---|
+| Normal (loopback) | 17.0 kB/s, 647 packets/s | 0.2 ms | Normal |
+| 150 ± 20 ms delay, 2 % loss, 2 % duplication | 16.0 kB/s, 608 packets/s | 303 ms | Goes on: the round trip is the 2 × 150 ms of the link, the inputs are stamped for the server's tick, and the state repeated 20 times per second covers the lost datagrams |
+| Same, limited to 5 kB/s | 0.9 kB/s (the link is full) | about 26 s | Updates queue up in the link |
+
+The game sends about **17 kB/s to each player** in a busy stage, so it needs a
+downlink of about **20 kB/s per player**, a fraction of any home connection
+(the 5 kB/s test is below it). Sending only the components that
+changed would lower this need if very slow links had to be supported.
 
 ## Storage
 
