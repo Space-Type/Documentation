@@ -90,7 +90,10 @@ server, they are logged as a warning):
     its `progression`, at height `y` (0 at the top of the screen), or at a
     height drawn in every game with `random`.
 
-3. That's all: the server loads every `stage-<n>.waves` it finds, and goes on
+3. Optionally, its music: `assets/musics/stage-<n>.ogg` in Game-Client (convert
+   other formats with `ffmpeg -i music.m4a -c:a libvorbis -q:a 4 stage-<n>.ogg`).
+   Without it, the stage is played in silence.
+4. That's all: the server loads every `stage-<n>.waves` it finds, and goes on
    to stage `n` when stage `n - 1` is cleared. Invalid lines are logged and
    skipped.
 
