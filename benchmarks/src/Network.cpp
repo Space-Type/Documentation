@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 
 namespace {
@@ -171,8 +172,11 @@ void Bench::bandwidth(const std::string& host, std::uint16_t port, int seconds)
     std::size_t samples = 0;
     std::size_t entitySum = 0;
     std::size_t entityMax = 0;
+    std::vector<double> roundTrips;  // ms, measured with TickSync like the client
+    constexpr Protecs::Tick PROBE = 0xBE7C4;  // marks our requests (the server also sends one after the join)
     auto start = Clock::now();
     auto nextSample = start;
+    auto nextSync = start;
 
     while (secondsSince(start) < seconds) {
         if (auto packet = client.receive(10)) {
@@ -182,10 +186,16 @@ void Bench::bandwidth(const std::string& host, std::uint16_t port, int seconds)
 
                 ++count;
                 bytes += packet->filled;
+                if (auto* sync = std::get_if<Packets::TickSync>(&data); sync && sync->clientTick == PROBE)
+                    roundTrips.push_back(std::chrono::duration<double, std::milli>(Clock::now() - sync->clientTime).count());
                 if (tracker.handle(data))
                     client.send(Packets::EntityList{});
             } catch (const std::exception&) {
             }
+        }
+        if (Clock::now() >= nextSync) {
+            nextSync += std::chrono::milliseconds(500);
+            client.send(Packets::TickSync{ .clientTick = PROBE, .serverTick = 0, .clientTime = Clock::now(), .serverTime = {} });
         }
         if (Clock::now() >= nextSample) {
             nextSample += std::chrono::milliseconds(100);
@@ -204,7 +214,17 @@ void Bench::bandwidth(const std::string& host, std::uint16_t port, int seconds)
     }
 
     std::cout << "Entities known by the client: " << static_cast<double>(entitySum) / static_cast<double>(samples)
-              << " on average, " << entityMax << " at most\n\n";
+              << " on average, " << entityMax << " at most\n";
+    if (!roundTrips.empty()) {
+        std::ranges::sort(roundTrips);
+        double sum = 0;
+        for (double value : roundTrips)
+            sum += value;
+        std::cout << "Round trip (TickSync): " << sum / static_cast<double>(roundTrips.size()) << " ms on average, "
+                  << roundTrips[roundTrips.size() / 2] << " ms median, " << roundTrips.back() << " ms at most, "
+                  << roundTrips.size() << " answers to " << seconds * 2 << " requests\n";
+    }
+    std::cout << "\n";
     std::cout << "| Packet | Packets/s | Bytes/s | Share of the bytes |\n|---|---|---|---|\n";
     for (const auto& [name, value] : byType)
         std::cout << "| " << name << " | " << static_cast<double>(value.first) / seconds << " | "
