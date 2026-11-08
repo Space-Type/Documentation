@@ -61,7 +61,7 @@ RFC 9999                  R-Type Protocol                  November 2026
 
 
      6.1.  Entities and Ids .......................................... 9
-     6.2.  Entity Kinds ............................................. 10
+     6.2.  Entity Kinds .............................................. 9
      6.3.  Components ............................................... 10
      6.4.  Gameplay Shown by Clients ................................ 11
    7.  Protocol Behavior ............................................ 11
@@ -518,20 +518,6 @@ RFC 9999                  R-Type Protocol                  November 2026
    o  The value 0 is never a valid entity; PlayerId uses it for
       "refused".
 
-
-
-
-
-
-
-
-
-
-Space-Type                    Informational                     [Page 9]
-
-RFC 9999                  R-Type Protocol                  November 2026
-
-
 6.2.  Entity Kinds
 
    Kind   Name               Meaning
@@ -539,6 +525,13 @@ RFC 9999                  R-Type Protocol                  November 2026
    0      GENERIC            Nothing to draw. The level is such an
                              entity (component Level).
    1      PLAYER             A player's ship, coloured by
+
+
+Space-Type                    Informational                     [Page 9]
+
+RFC 9999                  R-Type Protocol                  November 2026
+
+
                              PlayerStats.Slot.
    2      ENEMY_PATA_PATA    Small enemy flying in waves.
    3      ENEMY_SCANT        Enemy.
@@ -561,6 +554,10 @@ RFC 9999                  R-Type Protocol                  November 2026
                              takes it, or one more level.
    17-19  FORCE_1-3          A player's Force (an attachable pod), by
                              level; a new level is a new entity.
+   20     ENEMY_GOMANDER     Stage 2 boss body: armored, takes no
+                             damage.
+   21     GOMANDER_CORE      Stage 2 boss eye: its Health is the boss
+                             health, its deletion is the boss death.
 
    New kinds are added at the end: existing values never change. A
    client SHOULD draw an unknown kind as a generic object rather than
@@ -573,6 +570,9 @@ RFC 9999                  R-Type Protocol                  November 2026
    components are added at the end: existing types never change. The
    server sends every component of every entity 20 times per second,
    except PlayerInput.
+
+
+
 
 
 
@@ -634,12 +634,12 @@ RFC 9999                  R-Type Protocol                  November 2026
    o  Level: one GENERIC entity with a Level component. A change of
       Stage starts a new stage; Won = true ends the game with a victory.
 
-   o  Boss: the Health of the DOBKERATOPS_CORE entity is the boss
-      health. When its BossPhase goes up, the boss gets angry, and a
-      client SHOULD show it (text, sound, flash).
+   o  Boss: the Health of the boss core (DOBKERATOPS_CORE in stage 1,
+      GOMANDER_CORE in stage 2) is the boss health. When its BossPhase
+      goes up, the boss gets angry, and a client SHOULD show it (text,
+      sound, flash).
 
 7.  Protocol Behavior
-
 
 
 

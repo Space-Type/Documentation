@@ -116,7 +116,10 @@ server, they are logged as a warning):
     Parts of a big enemy go in `parts`: they follow it and die with it. A boss
     is named in the `BOSSES` table, so stage files can use it.
 3. **Client**: give its kind a sprite in `Session::initSprite`, with a sprite
-   sheet function from `src/game/SpriteSheets`.
+   sheet function from `src/game/SpriteSheets`. A boss also goes in the
+   `BOSSES` table of `src/game/Bosses/Bosses.hpp` (its core, its body and its
+   name): the health bar, the hit blink, the "WARNING", the big explosion and
+   "STAGE CLEAR" then work for it.
 4. A behaviour that no component covers is a new component and a new system:
    a system has a `signature()`, `setEngine()` and `operator()(entity, dt)`,
    and is added to `src/systems/Tuple.hpp` with its order.
