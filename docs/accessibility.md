@@ -53,6 +53,7 @@ muted:
 | Explosion (enemy, boss, ship) | An explosion animation |
 | Life lost | Explosion, the ship blinks, one heart less in the HUD |
 | Start of a stage | "LEVEL n" in big letters |
+| Boss getting angry (alarm) | "WARNING" in big letters, and the boss flashes |
 | Stage cleared | "STAGE CLEAR" in big letters with every player's score |
 | End of the game | "Victory" (green) or "Game over" (red) screen, with the score |
 
