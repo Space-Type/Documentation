@@ -66,9 +66,15 @@ every `n` from 1 until a file is missing:
 length 3797          # progression where the scrolling stops (pixels of stage-<n>.png)
 boss   dobkeratops   # blueprint of the boss; without it, the stage ends at its length
 
-# progression  type       y    movement
-120            pata-pata  80   sine
+# progression  type       y       movement
+120            pata-pata  80      sine
+280            pata-pata  random  straight
 ```
+
+`y` is the top of the enemy in world units (0 at the top of the screen), or
+`random`: `StageSpawner` then draws a new height each time the enemy appears,
+between 40 and 374, so that an enemy moving along a sine stays on screen. The
+draw is seeded with the clock, so it changes in every game.
 
 1. `Scrolling` advances `Level::progression` (30 background pixels per second)
    up to `length`.
