@@ -377,7 +377,7 @@ The server **MUST** also:
 - Never trust a client for anything but its inputs: positions, hits, scores and
   deaths are computed by the server.
 
-[Measured](technical-study.md#robustness): 100 000 malformed datagrams of five
+[Measured](technical-study.md#security): 100 000 malformed datagrams of five
 kinds (random bytes, random payload of a known type, `EntityList` announcing
 4 billion entries, `PlayerJoin` with a 255-byte name, unknown component type)
 did not crash the reference server, which still answered a new player in under
