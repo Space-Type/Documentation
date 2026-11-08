@@ -1,174 +1,396 @@
 # Network protocol
 
-**Status:** draft, version 0. This document describes the binary protocol
-between `r-type_client` and `r-type_server`. It is precise enough to write a
-new client, and it grows with the implementation.
+**Status:** version 1, implemented by `r-type_server` and `r-type_client`
+(library [Protecs](systems/protecs.md)). This document is meant to be complete
+enough to write a new client, in any language, without reading our code.
 
-The key words **MUST**, **MUST NOT**, **SHOULD** and **MAY** are to be
-interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
+The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT** and **MAY** are
+to be interpreted as described in
+[RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
 
-## 1. Transport
+## 1. Overview
 
-- All in-game communication uses **UDP**. There is no TCP connection.
+- The server is **authoritative**: it simulates the game, and clients only
+  send the player's inputs and display what the server describes.
+- The game state is a set of **entities** (players, enemies, missiles, the
+  level...). Each entity has **components** (position, health, score...).
+  The server replicates the *shared* components of every entity to every
+  client.
+- Both sides run the game at a fixed **simulation rate of 120 ticks per
+  second**. Most packets carry the **simulation tick** they apply to, so a
+  receiver can apply them in order, at the right moment.
+
+## 2. Transport
+
+- All communication uses **UDP**. There is no TCP connection: a lost or late
+  game update is worthless once the next one is sent, and UDP lets the game
+  go on without waiting for retransmissions.
 - The server listens on **UDP port 5432**, on every interface (`0.0.0.0`).
+  A client uses any local port; the server answers to the address and port
+  the datagram came from.
 - One datagram carries exactly **one packet**.
-- UDP does not guarantee delivery, order or uniqueness: a peer MUST NOT assume
-  that every packet arrives, or arrives once, or in order.
+- A datagram MUST NOT be longer than **64 bytes**. Receivers read at most
+  64 bytes per datagram: a longer one is truncated, and then usually rejected
+  as malformed.
+- UDP does not guarantee delivery, order or uniqueness. A peer MUST NOT assume
+  that a packet arrives, arrives once, or arrives in order. Section 7 explains
+  how the protocol copes with it.
 
-## 2. Data types
+## 3. Data types
 
 | Type | Size | Encoding |
 |---|---|---|
 | `u8` | 1 byte | unsigned integer |
-| `u16` | 2 bytes | unsigned integer, **little-endian** |
-| `u32` | 4 bytes | unsigned integer, **little-endian** |
-| `f32` | 4 bytes | IEEE 754 single precision float, **little-endian** |
-| `bits64` | 8 bytes | 64 flags: flag `i` is bit `i % 8` (least significant first) of byte `i / 8`, which is a little-endian `u64` |
+| `u16` | 2 bytes | unsigned integer, little-endian |
+| `u32` | 4 bytes | unsigned integer, little-endian |
+| `u64` | 8 bytes | unsigned integer, little-endian |
+| `i64` | 8 bytes | signed integer (two's complement), little-endian |
+| `f32` | 4 bytes | IEEE 754 single precision float, little-endian |
+| `bool` | 1 byte | `0` is false, any other value is true |
+| `bits64` | 8 bytes | 64 flags: flag `i` is bit `i % 8` (least significant first) of byte `i / 8` |
+| `str32` | 1 to 33 bytes | `u8` length (0 to 32), then that many bytes of text, no terminator |
 
-All multi-byte values are little-endian. Fields are packed: there is no
-padding between them.
+- All multi-byte values are **little-endian**. A peer running on a big-endian
+  machine MUST swap the bytes.
+- Fields are **packed**: there is no padding between them, and a packet is
+  exactly as long as its fields (no trailing bytes).
+- `tick` is a `u32` simulation tick. `id` is a `u64` **network entity id**
+  (section 6.1).
 
-## 3. Packet layout
+## 4. Packet layout
 
-Every packet has the same fixed size: **24 bytes**.
+```text
+ 0                   1                   2
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 ...
++---------------+-----------------------------------------
+|     type      |  payload (depends on the type, 0 to 63 bytes)
++---------------+-----------------------------------------
+```
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | `type`: packet type, a `u8` from the table below |
+| 1 | depends on the type | `payload` |
+
+| Type | Name | Direction | Size on the wire | Has a tick |
+|---|---|---|---|---|
+| 0 | `EntityComponentData` | server → client | 15 + component | yes |
+| 1 | `EntityCreate` | server → client | 14 | yes |
+| 2 | `EntityDelete` | server → client | 13 | yes |
+| 3 | `EntityList` | both | 9 + 16 per entity | yes |
+| 4 | `EntityRemoveComponent` | server → client | 15 | yes |
+| 5 | `EntitySyncComponents` | both | 21 | yes |
+| 6 | `Ping` | both | 1 | no |
+| 7 | `PlayerId` | both | 9 | no |
+| 8 | `PlayerInput` | both | 8 | yes |
+| 9 | `PlayerJoin` | client → server | 2 to 34 | no |
+| 10 | `PlayerLeave` | both | 1 | no |
+| 11 | `TickSync` | both | 25 | no |
+
+Sizes are measured by the [benchmarks](technical-study.md#measurements) (`rtype_bench sizes`).
+
+## 5. Packets
+
+### 5.1 `EntityComponentData` (type 0)
+
+The value of one shared component of an entity. The server sends one for
+every shared component of every entity, 20 times per second.
 
 | Offset | Size | Field | Description |
 |---|---|---|---|
-| 0 | 1 | `type` | Packet type (see section 4) |
-| 1 | 23 | `payload` | Type-specific fields, then zero padding up to 24 bytes |
+| 1 | 4 | `tick` | Tick of the value |
+| 5 | 8 | `id` | Entity |
+| 13 | 2 | `component` | `u16` component type (section 6.3) |
+| 15 | depends | `data` | Component value (section 6.3) |
 
-- A sender MUST fill unused payload bytes with zeros.
-- A receiver MUST drop a datagram whose size is not exactly 24 bytes.
-- A receiver MUST drop a packet whose `type` is unknown, or whose enumerated
-  fields hold an unknown value.
-- A receiver MUST NOT stop, crash or allocate memory based on the content of an
-  invalid packet: invalid packets are silently ignored (and MAY be logged).
+A receiver that does not know `id` SHOULD ask for the entity list
+(section 7.3) and drop the packet.
 
-## 4. Packet types
+### 5.2 `EntityCreate` (type 1)
 
-| Type | Name | Direction | Purpose |
+| Offset | Size | Field | Description |
 |---|---|---|---|
-| `0` | `EntityAddComponent` | server → client | A component was added to an entity |
-| `1` | `EntityPosition` | server → client | Position of an entity |
-| `2` | `EntityRemoveComponent` | server → client | A component was removed from an entity |
-| `3` | `EntitySyncComponents` | both | Compare the components of an entity with the server |
-| `4` | `PlayerInput` | client → server | A player pressed or released a control |
+| 1 | 4 | `tick` | Tick of the creation |
+| 5 | 8 | `id` | New entity |
+| 13 | 1 | `kind` | `u8` entity kind (section 6.2): what to draw |
 
-!!! info "Status"
-    These packets are defined and serialized by [Protecs](systems/protecs.md).
-    The server decodes them, but does not act on them yet.
+The components of the entity follow as `EntityComponentData` packets.
 
-Component types are identified by a `u16`: the index of the component in the
-list of components shared by the client and the server. This list will be
-fixed in this document together with the connection handshake.
+### 5.3 `EntityDelete` (type 2)
 
-### 4.1 `EntityAddComponent` (type 0)
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 4 | `tick` | Tick of the deletion; `0` means "now" |
+| 5 | 8 | `id` | Deleted entity |
 
-| Offset | Size | Type | Field | Description |
-|---|---|---|---|---|
-| 0 | 1 | `u8` | `type` | `0` |
-| 1 | 4 | `u32` | `entity` | Entity identifier, chosen by the server |
-| 5 | 2 | `u16` | `componentType` | Component added to the entity |
-| 7 | 17 | | padding | Zeros |
+The receiver removes the entity and its components. A client SHOULD show the
+death of an enemy or a player (explosion) when its entity is deleted.
 
-### 4.2 `EntityPosition` (type 1)
+### 5.4 `EntityList` (type 3)
 
-Position of an entity in the game world.
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 4 | `tick` | Tick of the list |
+| 5 | 4 | `count` | `u32` number of entries |
+| 9 | 16 × `count` | entries | For each entity: `id` (`u64`), then its shared components (`bits64`, flag `i` set when it has component type `i`) |
 
-| Offset | Size | Type | Field | Description |
-|---|---|---|---|---|
-| 0 | 1 | `u8` | `type` | `1` |
-| 1 | 4 | `u32` | `entity` | Entity identifier, chosen by the server |
-| 5 | 4 | `f32` | `x` | Horizontal position, in world units |
-| 9 | 4 | `f32` | `y` | Vertical position, in world units |
-| 13 | 11 | | padding | Zeros |
+- **Client → server**: a request for the list. The client sends it with
+  `count = 0` (9 bytes).
+- **Server → client**: the list of every entity. It does not fit in one
+  datagram (64 bytes hold **3 entries**), so the server sends as many
+  `EntityList` packets as needed, each with at most 3 entries. A receiver
+  MUST handle each packet on its own, and MUST NOT expect them all to arrive.
+- A receiver MUST reject a packet whose `count` needs more bytes than the
+  datagram has.
 
-The world unit is not fixed by the protocol yet. The planned convention is the
-client's virtual resolution: `x` from `0` (left) to `1920` (right), and `y` from
-`0` (top) to `1080` (bottom).
+### 5.5 `EntityRemoveComponent` (type 4)
 
-Example: entity `7` at `(100.0, 540.0)`:
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 4 | `tick` | Tick of the removal |
+| 5 | 8 | `id` | Entity |
+| 13 | 2 | `component` | `u16` component type to remove |
 
-```
-01 07 00 00 00 00 00 c8 42 00 00 07 44 00 00 00 00 00 00 00 00 00 00 00
-^^ ^^^^^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-type  entity      x=100.0     y=540.0              padding
-```
+### 5.6 `EntitySyncComponents` (type 5)
 
-### 4.3 `EntityRemoveComponent` (type 2)
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 4 | `tick` | Tick |
+| 5 | 8 | `id` | Entity |
+| 13 | 8 | `components` | `bits64`: the shared components the sender has for this entity |
 
-| Offset | Size | Type | Field | Description |
-|---|---|---|---|---|
-| 0 | 1 | `u8` | `type` | `2` |
-| 1 | 4 | `u32` | `entity` | Entity identifier |
-| 5 | 2 | `u16` | `componentType` | Component removed from the entity |
-| 7 | 17 | | padding | Zeros |
+- **Client → server**: "this is what I have for this entity".
+- **Server → client**: the server's own set, followed by an
+  `EntityComponentData` for each component the client lacks and an
+  `EntityRemoveComponent` for each one it should not have (section 7.3).
 
-### 4.4 `EntitySyncComponents` (type 3)
+### 5.7 `Ping` (type 6)
 
-| Offset | Size | Type | Field | Description |
-|---|---|---|---|---|
-| 0 | 1 | `u8` | `type` | `3` |
-| 1 | 4 | `u32` | `entity` | Entity identifier |
-| 5 | 8 | `bits64` | `signature` | Flag `i` is set when the entity has component type `i` |
-| 13 | 11 | | padding | Zeros |
+No payload. A client MUST answer a `Ping` with a `Ping`. It is reserved to check
+that a peer is still there (section 8).
 
-A client sends its signature of an entity to check it. The server answers with
-the same packet holding **its** signature, and, if they differ, sends the
-missing changes as `EntityAddComponent` and `EntityRemoveComponent` packets.
+### 5.8 `PlayerId` (type 7)
 
-### 4.5 `PlayerInput` (type 4)
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 8 | `id` | Network id of the player's own entity |
 
-| Offset | Size | Type | Field | Description |
-|---|---|---|---|---|
-| 0 | 1 | `u8` | `type` | `4` |
-| 1 | 1 | `u8` | `input` | `0` up, `1` down, `2` left, `3` right, `4` shoot |
-| 2 | 1 | `u8` | `state` | `0` pressed (held down), `1` released |
-| 3 | 21 | | padding | Zeros |
+- **Server → client**: answer to a join. `id = 0` means the server refused the
+  player.
+- **Client → server**: "I lost my id": the server sends the `PlayerId` again
+  (the client's own `id` field is ignored, it SHOULD be `0`). The server
+  ignores it from an address that did not join.
 
-Example: the player releases the fire button:
+### 5.9 `PlayerInput` (type 8)
 
-```
-04 04 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-```
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 4 | `tick` | Tick the input applies to (in the server's time, section 7.2) |
+| 5 | 1 | `sequence` | `u8` order of the inputs sent for the same tick |
+| 6 | 1 | `input` | `0` up, `1` down, `2` left, `3` right, `4` fire |
+| 7 | 1 | `state` | `0` pressed (held down), `1` released |
 
-## 5. Planned packets
+- **Client → server**: a change of one input of the player.
+- **Server → client**: a request for the full input state: the server sends
+  an empty one (all fields `0`) every 0.5 s. The client answers with five
+  `PlayerInput` packets for the same tick, `sequence` 0 to 4, one per input
+  (up, down, left, right, fire), with the state it holds now. A lost press or
+  release is thus corrected within half a second.
 
-!!! info "Not implemented yet"
-    The packets below are being designed with the server, and their layout is
-    subject to change. They will get their own type number and layout table
-    once implemented.
+The server ignores an input for a tick it already simulated. Holding fire
+charges the shot; releasing it fires (section 6.4).
 
-| Name | Direction | Purpose |
+### 5.10 `PlayerJoin` (type 9)
+
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 1 to 33 | `name` | `str32`: the player's name |
+
+The first packet of a client (section 7.1). A name longer than 32 bytes MUST be
+rejected. The server ignores a `PlayerJoin` from an address that already joined.
+
+### 5.11 `PlayerLeave` (type 10)
+
+No payload.
+
+- **Client → server**: the player quits. The server deletes its entity and tells
+  the other clients (`EntityDelete`).
+- **Server → client**: the client was removed from the game and SHOULD end its
+  session.
+
+### 5.12 `TickSync` (type 11)
+
+| Offset | Size | Field | Description |
+|---|---|---|---|
+| 1 | 4 | `clientTick` | `u32` client's tick when it sent the request |
+| 5 | 4 | `serverTick` | `u32` server's tick when it answered (0 in a request) |
+| 9 | 8 | `clientTime` | `i64` client's clock when it sent the request, opaque to the server |
+| 17 | 8 | `serverTime` | `i64` server's monotonic clock in nanoseconds when it answered |
+
+The client sends it with its own values, and the server sends it back with
+`clientTick` and `clientTime` unchanged (section 7.2). The server also sends one
+right after a join.
+
+## 6. Game data
+
+### 6.1 Entities and ids
+
+- Entity ids are chosen by the server. A client MUST treat them as opaque
+  `u64` values and MUST NOT assume that ids are small or consecutive (the
+  reference server mixes a time stamp in the upper 32 bits, so an id is not
+  reused when an entity slot is).
+- The value `0` is never a valid entity; `PlayerId` uses it for "refused".
+
+### 6.2 Entity kinds (`EntityCreate.kind`)
+
+| Kind | Name | Meaning |
 |---|---|---|
-| `Connect` / `Accept` | client → server / server → client | Join a game, receive a player identifier |
-| `Spawn` / `Destroy` | server → client | An entity (player, Bydo, missile) appears or is destroyed, with its kind |
-| `Heartbeat` | both | Keeps the session alive, detects crashed clients |
-| `Disconnect` | both | A player leaves, other clients are notified |
+| 0 | `GENERIC` | Nothing to draw. The **level** is such an entity (component `Level`) |
+| 1 | `PLAYER` | A player's ship, coloured by `PlayerStats.slot` |
+| 2 | `ENEMY_PATA_PATA` | Small enemy flying in waves |
+| 3 | `ENEMY_SCANT` | Enemy |
+| 4 | `PLAYER_MISSILE` | Missile shot by a player |
+| 5 | `ENEMY_MISSILE` | Missile shot by an enemy or a boss |
+| 6 to 10 | `PLAYER_BEAM_1` to `PLAYER_BEAM_5` | Charged beam of a player, by charge level (1 to 5) |
+| 11 | `ENEMY_DOBKERATOPS` | Stage 1 boss: its body (armored, it does not take damage) |
+| 12 | `ENEMY_DOBKERATOPS_CORE` | Stage 1 boss: its weak point. Its `Health` is the boss health; its deletion is the boss death |
 
-## 6. Security considerations
+New kinds are added at the end: existing values never change.
 
-- Packets have a **fixed size** and are read into a fixed-size buffer: a
-  datagram cannot make a peer read or allocate more than 24 bytes.
-- The server is the **authority**: it never trusts a position or an event sent
-  by a client, only its inputs.
-- UDP source addresses can be spoofed: the planned `Connect` handshake will
-  give each client an identifier that later packets must carry.
-- A client that floods the server SHOULD be dropped (planned rate limiting).
+### 6.3 Components
 
-## 7. Implementation notes
+The world is **800 × 450 units**; `x` grows to the right and `y` downwards.
+Component types are the index of the component in this table:
 
-- The reference implementation is [Protecs](systems/protecs.md):
-  `src/networking/Packet` (type byte and dispatch) and one folder per packet
-  type in `src/networking/packets/`.
-- The packet size is `sizeof(Protecs::Networking::Packets::PacketData)`, the
-  variant of all packet types: 24 bytes on x86-64. Adding a larger packet type
-  changes it, and this document must then be updated.
-- The type byte is the index of the packet in that variant: reordering the
-  variant changes the type numbers, and this document must then be updated.
-- Fields are copied with `memcpy`, in host byte order. On every supported
-  platform (x86-64 Linux and Windows) this is little-endian, as required by
-  section 2.
-- Unknown packet types raise a `Protecs::PacketError`, which the server logs
-  before dropping the packet. The datagram size check of section 3 is not
-  applied yet (see the [server page](systems/server.md#next-steps)).
+| Type | Component | Size | Fields |
+|---|---|---|---|
+| 0 | `Level` | 6 | `progression` `u32` (pixels of the stage background scrolled), `stage` `u8` (1 to 8), `won` `bool` (the last stage is cleared: the game is won) |
+| 1 | `Movement` | 12 | `direction` 2 × `f32`, `speed` `f32` |
+| 2 | `PathFinding` | 13 | `type` `u8` (`0` straight), `targetVelocity` 2 × `f32`, `acceleration` `f32` |
+| 3 | `PlayerInput` | 1 | `u8` flags: bit 4 up, bit 3 down, bit 2 left, bit 1 right, bit 0 fire |
+| 4 | `PlayerStats` | 7 | `slot` `u8` (0 to 3, the player's colour), `lives` `u8` (0: out of the game), `score` `u32`, `charge` `u8` (0 to 5, charge level while fire is held) |
+| 5 | `Transform` | 16 | `position` 2 × `f32` (top-left corner), `rotation` `f32`, `scale` `f32` (draw the sprite that much bigger) |
+| 6 | `Velocity` | 12 | `position` 2 × `f32` (units per tick), `angular` `f32` |
+| 7 | `PlayerName` | 1 to 33 | `str32`: the player's name |
+| 8 | `Health` | 4 | `hp` `u16`, `max` `u16` |
+
+New components are added at the end: existing types never change. The server
+sends every component of every entity 20 times per second, except
+`PlayerInput`.
+
+### 6.4 Gameplay the client shows
+
+- **Players**: `PlayerStats.lives` hearts, `score`, and `charge` while the
+  player charges. At `lives = 0` the player is out: the others play on.
+- **Charged shot**: tap fire for a missile; hold it to charge (one level per
+  0.4 s, up to 5), release to fire a beam (`PLAYER_BEAM_n`).
+- **Level**: one `GENERIC` entity with `Level`. A change of `stage` starts a
+  new stage; `won = true` ends the game with a victory.
+- **Boss**: `Health` of the `ENEMY_DOBKERATOPS_CORE` entity is the boss health.
+
+## 7. Behaviour
+
+### 7.1 Joining and leaving
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant S as Server
+    participant O as Other clients
+    C->>S: PlayerJoin(name)
+    Note over C: no answer within 1 s:<br/>PlayerJoin + PlayerId(0) again,<br/>give up after 5 s
+    S->>C: PlayerId(id)
+    S->>C: TickSync
+    S->>C: EntityCreate(id, PLAYER)
+    S->>O: EntityCreate(id, PLAYER)
+    S->>C: EntityList × n (3 entities each)
+    loop 20 times per second
+        S->>C: EntityComponentData (every shared component)
+        S->>O: EntityComponentData
+    end
+    C->>S: PlayerLeave
+    S->>O: EntityDelete(id)
+```
+
+1. The client sends `PlayerJoin`. Without an answer within a second, it sends
+   `PlayerJoin` again with a `PlayerId` (in case the server's answer was lost),
+   and gives up after 5 seconds.
+2. The server registers the address, answers `PlayerId`, `TickSync`, announces
+   the new player to everyone (`EntityCreate`), and sends the entity list. The
+   first player to join starts the level; when the last player leaves, the
+   server deletes every entity and the level starts over with the next player.
+3. To quit, the client sends `PlayerLeave`.
+
+### 7.2 Ticks and clock synchronization
+
+- Both sides count ticks at 120 per second, from their own start. The
+  difference between the server's tick and the client's is measured with
+  `TickSync`: the client sends one about every 100 ticks; with the answer,
+  the round trip time is `now - clientTime`, and the server's current tick is
+  about `serverTick + (round trip / 2) × 120`.
+- A client MUST stamp its `PlayerInput` with a tick in the **server's** time,
+  slightly ahead of it, so the input reaches the server before that tick is
+  simulated.
+- A receiver queues packets that have a tick and applies them when its
+  simulation reaches that tick. Packets without a tick, and packets with
+  tick `0`, are applied at once.
+
+### 7.3 Staying consistent over a lossy network
+
+UDP may lose any packet. The protocol never retransmits; it **repeats state**
+instead:
+
+- **Component values** are sent 20 times per second: a lost value is replaced
+  50 ms later.
+- **Inputs** are re-sent in full every 0.5 s on the server's request
+  (section 5.9).
+- **A lost `EntityCreate`**: the client receives data for an entity it does
+  not know, and asks for the entity list (`EntityList` with `count = 0`).
+  For an entity whose components differ, it sends `EntitySyncComponents`, and
+  the server answers with the missing or extra components.
+- **A lost `EntityDelete`**: a client SHOULD forget an entity the server has
+  not updated for one second while other updates keep arriving (the server
+  updates every entity 20 times per second). The reference client does so.
+  [Measured](technical-study.md#packet-loss): with 20 % of the datagrams lost,
+  this removes about 92 % of the entities that would otherwise stay on screen
+  after their deletion.
+
+## 8. Validation and security
+
+A peer receives datagrams from anyone. Before using a packet, a receiver
+**MUST**:
+
+1. Reject an empty datagram, and read at most 64 bytes.
+2. Reject an unknown `type` (12 or more).
+3. Check that the datagram holds the fixed fields of the type **before reading
+   them**, then that it holds every variable part: `str32` lengths (at most 32)
+   and the `EntityList` `count` (16 bytes per entry).
+4. Reject an unknown component type (9 or more) in `EntityComponentData`.
+5. Treat a packet that fails a check as if it never arrived: drop it, keep
+   running, keep no state about it.
+
+The server **MUST** also:
+
+- Ignore every packet but `PlayerJoin` from an address that did not join.
+- Ignore inputs for ticks already simulated, and keep a bounded number of
+  pending inputs per player (the reference server keeps 50).
+- Never trust a client for anything but its inputs: positions, hits, scores and
+  deaths are computed by the server.
+
+[Measured](technical-study.md#robustness): 100 000 malformed datagrams of five
+kinds (random bytes, random payload of a known type, `EntityList` announcing
+4 billion entries, `PlayerJoin` with a 255-byte name, unknown component type)
+did not crash the reference server, which still answered a new player in under
+a millisecond.
+
+### Known gaps of the reference implementation
+
+These are planned fixes; a new implementation SHOULD do better:
+
+| Gap | Effect | Planned fix |
+|---|---|---|
+| No timeout: the server only removes a player who sends `PlayerLeave` | A crashed client keeps its ship in the game | The server sends `Ping` and removes a player silent for 5 s |
+| No player limit | More than 4 players can join | Refuse a fifth player with `PlayerId(0)` |
+| Player names are not filtered | A name may hold control characters, written to the server log | Accept only printable characters |
+| The `EntityList` length check counts the header as 4 bytes instead of 8 | A malformed list may read up to 4 bytes of the receive buffer past the datagram (never past the buffer) | Fix the check in Protecs |
+| Memory grows with floods of malformed datagrams (about 2 to 4 MiB per 100 000) | Not freed afterwards | Under investigation |
