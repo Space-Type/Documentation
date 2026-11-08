@@ -1,0 +1,3 @@
+[submodule "benchmarks/lib/protecs"]
+	path = benchmarks/lib/protecs
+	url = https://github.com/Space-Type/Protecs.git
