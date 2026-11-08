@@ -62,7 +62,7 @@ muted:
 | Feature | Status |
 |---|---|
 | **Separate volumes** for music and sound effects, and a master volume | Available |
-| Subtitles for music cues | Not needed: there are no spoken lines |
+| Subtitles for music cues | Not needed: there are no spoken lines, and the music (one per menu and stage) carries no information the screen does not show |
 
 ## Cognitive disabilities
 

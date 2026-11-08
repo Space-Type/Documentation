@@ -21,7 +21,7 @@ Game-Client/
   src/components/          client components (sprite, kind, blink, charge)
   src/systems/             client systems, listed in Tuple.hpp
   src/render/              render module: window, drawing, input, audio
-  assets/                  sprites, stage backgrounds, sounds, font
+  assets/                  sprites, stage backgrounds, sounds, musics, font
   tests/                   unit tests (headless)
   lib/                     submodules: wrecks, protecs, raylib
 ```
@@ -35,6 +35,11 @@ controls and the scenes, and runs at up to 120 frames per second. Each frame:
 2. Update the **session** if a game is running (section below), then the
    current **scene**.
 3. Draw the session, then the scene over it.
+4. Run the game's own small engine, which holds one entity: the **soundtrack**
+   (`Components::Music`). `Game` gives it the title music in the menus, and
+   the music of the current stage in a game (`Session::music()`,
+   `musics/stage-<n>.ogg`); `Systems::PlayMusic` starts a track when it
+   changes, in a loop, and streams it every frame.
 
 ```mermaid
 stateDiagram-v2
@@ -79,6 +84,7 @@ A `Session` is one game, from the connection to the end screen:
 | shared | `PlayerMovement`, `Motion`... (Protecs) | fixed update | Local movement of the player's ship, corrected by the server |
 | 0 | `PlayerInput` | update | Reads the bindings, sends a `PlayerInput` packet on each change |
 | 1 | `ChargeTimer` | update | Charge level shown while Shoot is held |
+| 1 | `PlayMusic` | update | Plays and streams the soundtrack (`Music` entity, in the game's engine) |
 | 0 | `RenderStage` | render | Stage background, scrolled with `Level::progression`; its black is transparent, so the stars only show in open space |
 | 1 | `RenderSprite` | render | Sprites, animations, ship tilt, blinking |
 | 2 | `RenderOutline` | render | High contrast outlines (option) |
@@ -109,6 +115,10 @@ file. See [Accessibility](../accessibility.md).
 the `assets/` folder, searched next to the executable, then in its parent and
 grandparent folders (`build/`, `build/Release/`). The client therefore works
 whatever its working directory.
+
+Musics are OGG files in `assets/musics/`: `title.ogg` for the menus and
+`stage-<n>.ogg` for stage `n` (raylib reads OGG, MP3 and WAV, not m4a). A
+stage without its file is played in silence.
 
 ## Render module
 
