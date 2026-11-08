@@ -125,9 +125,9 @@ server, they are logged as a warning):
    packet must stay within 64 bytes.
 3. Test serialization, deserialization, a too small buffer and invalid values;
    keep the coverage of Protecs above 98 % of the lines.
-4. Document it in the [protocol](protocol.md) and in `rfc/build_rfc.py`
-   (then run `python3 rfc/build_rfc.py` to regenerate the RFC text), and
-   update the Protecs submodule in the client and the server.
+4. Document it in the [protocol](protocol.md) and in its RFC text version
+   (`docs/rfc-rtype.txt`), then update the Protecs submodule in the client
+   and the server.
 
 ### Add a client setting
 
