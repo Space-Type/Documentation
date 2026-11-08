@@ -22,7 +22,7 @@ Windows) when the player leaves the settings screen.
 
 | Feature | Status |
 |---|---|
-| **Remappable controls**: each action (up, down, left, right, shoot) has a keyboard or mouse binding and a gamepad binding, chosen by pressing the new input | Available |
+| **Remappable controls**: each action (up, down, left, right, shoot, force) has a keyboard or mouse binding and a gamepad binding, chosen by pressing the new input | Available |
 | **Conflicts are shown**: an input bound to two actions is marked with `(!)` and explained under the table, not only coloured | Available |
 | **Keyboard and gamepad at the same time**, with the D-pad or the left stick | Available |
 | **Menus fully usable without a mouse**: arrows or D-pad to move and change values, Enter or A to confirm, Escape or B to go back | Available |
@@ -53,6 +53,7 @@ muted:
 | Explosion (enemy, boss, ship) | An explosion animation |
 | Life lost | Explosion, the ship blinks, one heart less in the HUD |
 | Bonus life taken | "+1 LIFE" rises over the ship, one heart more in the HUD |
+| Force taken or upgraded | "FORCE" (or "FORCE LV2", "FORCE LV3") rises over the Force |
 | Start of a stage | "LEVEL n" in big letters |
 | Boss getting angry (alarm) | "WARNING" in big letters, and the boss flashes |
 | Stage cleared | "STAGE CLEAR" in big letters with every player's score |

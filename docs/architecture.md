@@ -118,7 +118,11 @@ tick. The server systems run in this order:
 | 41 | `StageSpawner` | Enemies of the stage file appear, then the boss |
 | 45 | `BurstFire` | Entities with `AimedBursts` fire at the nearest player |
 | 50 | `Shooting` | Missiles, charged beams, enemies' random shots |
+| 51 | `ForceFire` | An attached Force fires with its player |
 | 60 | `Flight` | Enemies, missiles and bonuses fly; they are removed off screen |
+| 105 | `ForceControl` | Forces follow their ship, are launched and recalled, lost with a life |
+| 108 | `Shielding` | A Force destroys the enemy missiles it touches |
+| 109 | `ContactHits` | A Force hurts the enemies it touches |
 | 110 | `Collisions` | Hits, damage, scores, lives |
 | 111 | `Looting` | A killed enemy may drop its `Loot` (a bonus life) |
 | 112 | `Swinging` | Swinging parts (a boss tail) sweep their arc |

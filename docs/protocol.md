@@ -194,15 +194,15 @@ client MUST answer it with a `Ping`. A player the server has heard nothing from
 |---|---|---|---|
 | 1 | 4 | `tick` | Tick the input applies to (in the server's time, section 7.2) |
 | 5 | 1 | `sequence` | `u8` order of the inputs sent for the same tick |
-| 6 | 1 | `input` | `0` up, `1` down, `2` left, `3` right, `4` fire |
+| 6 | 1 | `input` | `0` up, `1` down, `2` left, `3` right, `4` fire, `5` force (launch / recall the Force); a receiver ignores another value |
 | 7 | 1 | `state` | `0` pressed (held down), `1` released |
 
 - **Client → server**: a change of one input of the player.
 - **Server → client**: a request for the full input state: the server sends
-  an empty one (all fields `0`) every 0.5 s. The client answers with five
-  `PlayerInput` packets for the same tick, `sequence` 0 to 4, one per input
-  (up, down, left, right, fire), with the state it holds now. A lost press or
-  release is thus corrected within half a second.
+  an empty one (all fields `0`) every 0.5 s. The client answers with six
+  `PlayerInput` packets for the same tick, `sequence` 0 to 5, one per input
+  (up, down, left, right, fire, force), with the state it holds now. A lost
+  press or release is thus corrected within half a second.
 
 The server ignores an input for a tick it already simulated. Holding fire
 charges the shot; releasing it fires (section 6.4).
@@ -263,6 +263,9 @@ right after a join.
 | 12 | `ENEMY_DOBKERATOPS_CORE` | Stage 1 boss: its weak point. Its `Health` is the boss health; its deletion is the boss death |
 | 13 | `ENEMY_DOBKERATOPS_TAIL` | Stage 1 boss: a segment of its tail, sweeping the screen; armored, it hurts on contact |
 | 14 | `PICKUP_LIFE` | Bonus life dropped by a killed enemy, drifting left: the player who touches it, or shoots it, gets one more life |
+| 15 | `ENEMY_POW_ARMOR` | Enemy carrying a Force item, dropped when it dies |
+| 16 | `PICKUP_FORCE` | The Force item, drifting left: a Force for the player who takes it, or one more level |
+| 17 to 19 | `FORCE_1` to `FORCE_3` | A player's Force (an attachable pod), by level; a new level is a new entity |
 
 New kinds are added at the end: existing values never change.
 
@@ -276,7 +279,7 @@ Component types are the index of the component in this table:
 | 0 | `Level` | 6 | `progression` `u32` (pixels of the stage background scrolled), `stage` `u8` (1 to 8), `won` `bool` (the last stage is cleared: the game is won) |
 | 1 | `Movement` | 12 | `direction` 2 × `f32`, `speed` `f32` |
 | 2 | `PathFinding` | 13 | `type` `u8` (`0` straight), `targetVelocity` 2 × `f32`, `acceleration` `f32` |
-| 3 | `PlayerInput` | 1 | `u8` flags: bit 4 up, bit 3 down, bit 2 left, bit 1 right, bit 0 fire |
+| 3 | `PlayerInput` | 1 | `u8` flags: bit 5 force, bit 4 up, bit 3 down, bit 2 left, bit 1 right, bit 0 fire |
 | 4 | `PlayerStats` | 7 | `slot` `u8` (0 to 3, the player's colour), `lives` `u8` (0: out of the game), `score` `u32`, `charge` `u8` (0 to 5, charge level while fire is held) |
 | 5 | `Transform` | 16 | `position` 2 × `f32` (top-left corner), `rotation` `f32`, `scale` `f32` (draw the sprite that much bigger) |
 | 6 | `Velocity` | 12 | `position` 2 × `f32` (units per tick), `angular` `f32` |
@@ -293,6 +296,10 @@ sends every component of every entity 20 times per second, except
 - **Players**: `PlayerStats.lives` hearts, `score`, and `charge` while the
   player charges. At `lives = 0` the player is out: the others play on. A
   larger `lives` is a bonus life taken (`PICKUP_LIFE`); lives stop at 10.
+- **Force**: a `FORCE_n` entity follows its player's ship (in front or
+  behind) or flies on its own after the force input; the server moves it, a
+  client only draws it. Taking a `PICKUP_FORCE` creates one, or replaces it
+  with the next level.
 - **Charged shot**: tap fire for a missile; hold it to charge (one level per
   0.4 s, up to 5), release to fire a beam (`PLAYER_BEAM_n`).
 - **Level**: one `GENERIC` entity with `Level`. A change of `stage` starts a

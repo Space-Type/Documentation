@@ -76,6 +76,7 @@ in the repository.
 |---|---|---|
 | Move | Arrow keys | D-pad or left stick |
 | Shoot | Space: tap for a missile, **hold to charge** and release for a beam | A |
+| Force: launch it, press again to recall it | F | B |
 | Pause menu (settings, quit) | Escape | Start |
 | Menus | Arrows, Enter, Escape | D-pad, A, B |
 
@@ -90,6 +91,10 @@ Every game control can be changed in **Settings > Controls**; see
   life left is out, and the others play on.
 - Killed enemies sometimes drop a **red heart**: touch it or shoot it for one
   more life (up to 10).
+- The walking **POW Armor** drops the **Force**: it attaches to your ship,
+  blocks enemy missiles, hurts enemies and fires with you. Take more items for
+  levels 2 and 3. Press F (B) to launch it, again to call it back: it attaches
+  to the side of the ship it touches. It is lost with a life.
 - After the last stage, every player sees the **victory** screen with their
   score.
 

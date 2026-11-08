@@ -70,6 +70,7 @@ boss   dobkeratops   # blueprint of the boss; without it, the stage ends at its 
 120            pata-pata  80      sine
 240            pata-pata  80      sine      life
 280            pata-pata  random  straight  life:0.5
+290            pow-armor  200     straight
 ```
 
 `y` is the top of the enemy in world units (0 at the top of the screen), or
@@ -77,9 +78,11 @@ boss   dobkeratops   # blueprint of the boss; without it, the stage ends at its 
 between 40 and 374, so that an enemy moving along a sine stays on screen. The
 draw is seeded with the clock, so it changes in every game.
 
-`loot` is optional: what the enemy drops when a player kills it. `life` always
-drops a bonus life, `life:<chance>` with a chance from 0 to 1, `none` nothing.
-Without it, the enemy drops a life with `Rules::LIFE_DROP_CHANCE` (0.1).
+Types: `pata-pata` (shoots at random, drops a life with
+`Rules::LIFE_DROP_CHANCE`, 0.1) and `pow-armor` (never shoots, always drops a
+Force item). `loot` is optional and changes what the enemy drops when a player
+kills it: `life` or `force` always drops that item, `life:<chance>` or
+`force:<chance>` with a chance from 0 to 1, `none` nothing.
 
 1. `Scrolling` advances `Level::progression` (30 background pixels per second)
    up to `length`.
@@ -112,6 +115,9 @@ enemy or a boss is a **blueprint** (`src/game/Blueprints`), not a class:
 | `Enrage` | `PhaseChange` | Once its health is low enough: `BossPhase` 2, bigger bursts, faster swinging parts |
 | `Loot { item, chance }` | `Looting` | Killed by a player, it may drop a bonus (`Pickup`) where it was |
 | `Pickup { item }` | `Collecting` | A bonus: the player who touches it, or whose shot touches it, takes it |
+| `Force` | `ForceControl`, `ForceFire` | A player's Force: level, attached (front or back) or flying |
+| `ContactDamage { damage, interval }` | `ContactHits` | Hurts the enemies it touches, at most every `interval` |
+| `Shield` | `Shielding` | Destroys the enemy missiles it touches |
 
 The **Dobkeratops** (stage 1 boss) is its weak point (`Boss`, 60 `Health`,
 `AimedBursts` of 3 shots every 2 s, `StopAt`, `Enrage` at 20 HP) with an
@@ -141,6 +147,26 @@ is cleared with its stage, drops nothing.
 whose shot touches it (a missile stops on it, a beam goes through). A bonus
 life adds one life, up to `Rules::MAX_LIVES` (10); a player who is out takes
 nothing. Clients see the new `PlayerStats::lives`.
+
+## The Force
+
+R-Type's attachable pod. A POW Armor drops a Force item; taking it gives a
+level 1 Force attached in front of the ship, the next ones levels 2 and 3
+(a bigger Force, created again as `FORCE_2`, `FORCE_3`), then 1000 points.
+
+- `ForceControl` keeps an attached Force at the front or the back of its ship.
+  The force input launches it straight ahead (backwards from the back): it
+  flies 250 units or to the screen edge, then floats there. Pressed again, it
+  flies back. Touching its ship, launched or not, it attaches on the side it
+  touches. A player who loses a life loses the Force.
+- It is invulnerable: `Shielding` destroys the enemy missiles it touches, and
+  `ContactHits` takes its level in hit points from the enemies it touches,
+  every 0.2 s (armored parts take nothing). A kill is a kill: score to its
+  player, and the enemy's loot drops. The shared `Game::damage` is used by
+  `Collisions` too.
+- `ForceFire`: attached, each missile its player fires comes with 1, 2 or 3
+  missiles of the Force (levels 2 and 3 fan out), forward from the front,
+  backward from the back.
 
 ## Command line
 
