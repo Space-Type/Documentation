@@ -169,6 +169,15 @@ them into the thread-safe `PacketQueue`; the main thread simulates and sends.
 The client also receives on its own thread, so a slow frame never delays the
 network.
 
+### Prediction and interpolation
+
+| Technique | In our game |
+|---|---|
+| **Client-side prediction** | The client runs the same movement systems as the server (shared in Protecs) on its own ship, so it moves at once when a key is pressed; the server's position then corrects it |
+| **Authoritative server** | Shots, hits, deaths and scores are only computed by the server: a client cannot cheat on them |
+| **Interpolation** of other entities | Not yet: other entities are drawn at their last received position, 20 times per second. Smooth enough at 120 frames per second for slow Bydos; interpolating between the two last updates (100 ms behind) is the next step if movements look jerky on a real network |
+| **Lag compensation** (rewinding hits to what the shooter saw) | Not needed: shots are slow projectiles simulated by the server, not instant hits |
+
 ### Binary encoding
 
 `rtype_bench serialization`: one `Transform` update, in our binary format and
@@ -251,7 +260,9 @@ benchmark README shows the `netem` commands.
 | Strangers | Every packet but `PlayerJoin` is ignored from an address that did not join |
 | Input floods | At most 50 pending inputs per player; inputs for past ticks are ignored |
 | Oversized files | Settings at most 4 KiB, stage files at most 64 KiB, checked before reading |
-| Vulnerable dependencies | Pinned versions (submodule commits, GoogleTest tag), updated on purpose |
+| Address spoofing | UDP does not prove where a datagram comes from, and a player is known by its address: someone who can spoof it could send inputs in its name. They can only move or fire that ship, never change the game state. A session token in each packet, given in `PlayerId`, is the planned fix |
+| Flooding | Measured below: the server keeps running and answering. Planned: a limit of datagrams per second and per address |
+| Vulnerable dependencies | Pinned versions (submodule commits, GoogleTest tag), updated on purpose. For long-term monitoring, GitHub **Dependabot** alerts can watch the submodules and the GitHub Actions of the public repositories |
 
 **Robustness, measured** (`rtype_bench fuzz`): 100 000 malformed datagrams of
 five kinds (random bytes; a known type with a random payload; an `EntityList`
