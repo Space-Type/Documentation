@@ -65,16 +65,16 @@ RFC 9999                  R-Type Protocol                  November 2026
      6.3.  Components ............................................... 10
      6.4.  Gameplay Shown by Clients ................................ 11
    7.  Protocol Behavior ............................................ 11
-     7.1.  Session Life Cycle ....................................... 11
+     7.1.  Session Life Cycle ....................................... 12
      7.2.  Ticks and Clock Synchronization .......................... 12
-     7.3.  Consistency over a Lossy Network ......................... 12
+     7.3.  Consistency over a Lossy Network ......................... 13
      7.4.  Example Exchange ......................................... 13
-   8.  Security Considerations ...................................... 13
-   9.  IANA Considerations .......................................... 14
-   10.  References .................................................. 14
-     10.1.  Normative References .................................... 14
-     10.2.  Informative References .................................. 14
-   Authors' Addresses ............................................... 14
+   8.  Security Considerations ...................................... 14
+   9.  IANA Considerations .......................................... 15
+   10.  References .................................................. 15
+     10.1.  Normative References .................................... 15
+     10.2.  Informative References .................................. 15
+   Authors' Addresses ............................................... 15
 
 1.  Introduction
 
@@ -548,6 +548,8 @@ RFC 9999                  R-Type Protocol                  November 2026
    11    ENEMY_DOBKERATOPS  Stage 1 boss body: armored, takes no damage.
    12    DOBKERATOPS_CORE   Stage 1 boss weak point: its Health is the
                             boss health, its deletion is the boss death.
+   13    DOBKERATOPS_TAIL   Stage 1 boss tail segment: sweeps the
+                            screen, armored, hurts on contact.
 
    New kinds are added at the end: existing values never change. A
    client SHOULD draw an unknown kind as a generic object rather than
@@ -560,6 +562,34 @@ RFC 9999                  R-Type Protocol                  November 2026
    components are added at the end: existing types never change. The
    server sends every component of every entity 20 times per second,
    except PlayerInput.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Space-Type                    Informational                    [Page 10]
+
+RFC 9999                  R-Type Protocol                  November 2026
+
 
    Type  Component    Size  Fields
    ----  -----------  ----  ----------
@@ -582,14 +612,8 @@ RFC 9999                  R-Type Protocol                  November 2026
                             f32.
    7     PlayerName   1-33  str32: the player's name.
    8     Health       4     HP u16, Max u16.
-
-
-
-
-Space-Type                    Informational                    [Page 10]
-
-RFC 9999                  R-Type Protocol                  November 2026
-
+   9     BossPhase    1     Phase u8: 1 when a boss comes, 2 once it
+                            gets angry.
 
 6.4.  Gameplay Shown by Clients
 
@@ -605,9 +629,26 @@ RFC 9999                  R-Type Protocol                  November 2026
       Stage starts a new stage; Won = true ends the game with a victory.
 
    o  Boss: the Health of the DOBKERATOPS_CORE entity is the boss
-      health.
+      health. When its BossPhase goes up, the boss gets angry, and a
+      client SHOULD show it (text, sound, flash).
 
 7.  Protocol Behavior
+
+
+
+
+
+
+
+
+
+
+
+
+Space-Type                    Informational                    [Page 11]
+
+RFC 9999                  R-Type Protocol                  November 2026
+
 
 7.1.  Session Life Cycle
 
@@ -644,12 +685,6 @@ RFC 9999                  R-Type Protocol                  November 2026
 
    3.  To quit, the client sends PlayerLeave.
 
-
-Space-Type                    Informational                    [Page 11]
-
-RFC 9999                  R-Type Protocol                  November 2026
-
-
    4.  If a client crashes or loses its connection, it stops answering.
        The server removes a player it has received nothing from for 15
        seconds, exactly as if it had sent PlayerLeave: the other clients
@@ -667,6 +702,12 @@ RFC 9999                  R-Type Protocol                  November 2026
    o  A client MUST stamp its PlayerInput with a tick in the server's
       time, slightly ahead of it, so that the input reaches the server
       before that tick is simulated.
+
+
+Space-Type                    Informational                    [Page 12]
+
+RFC 9999                  R-Type Protocol                  November 2026
+
 
    o  A receiver queues the packets that have a tick, and applies them
       when its simulation reaches that tick. Packets without a tick, and
@@ -703,17 +744,29 @@ RFC 9999                  R-Type Protocol                  November 2026
    from the state: a death is the deletion of an entity, a lost life is
    a smaller PlayerStats.Lives, a victory is Level.Won.
 
-
-Space-Type                    Informational                    [Page 12]
-
-RFC 9999                  R-Type Protocol                  November 2026
-
-
 7.4.  Example Exchange
 
    Alice joins, the server gives her the id 0x1a2b3c4d00000007, she
    holds fire, and an enemy dies. Bytes in hexadecimal, as sent on the
    wire:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Space-Type                    Informational                    [Page 13]
+
+RFC 9999                  R-Type Protocol                  November 2026
+
 
    C->S  PlayerJoin("alice")
          09 05 61 6c 69 63 65
@@ -748,7 +801,7 @@ RFC 9999                  R-Type Protocol                  November 2026
        lengths (at most 32) and the EntityList Count (16 bytes per
        entry).
 
-   4.  Reject an unknown component type (9 or more) in
+   4.  Reject an unknown component type (10 or more) in
        EntityComponentData.
 
    5.  Treat a packet that fails a check as if it never arrived: drop
@@ -761,19 +814,19 @@ RFC 9999                  R-Type Protocol                  November 2026
 
    o  Ignore inputs for ticks already simulated, and keep a bounded
       number of pending inputs per player (the reference server keeps
-
-
-Space-Type                    Informational                    [Page 13]
-
-RFC 9999                  R-Type Protocol                  November 2026
-
-
       50).
 
    o  Never trust a client for anything but its inputs: positions, hits,
       scores and deaths are computed by the server.
 
    Clients only send inputs. Positions, hits, scores and deaths are
+
+
+Space-Type                    Informational                    [Page 14]
+
+RFC 9999                  R-Type Protocol                  November 2026
+
+
    computed by the server, so a forged or replayed packet cannot change
    them.
 
@@ -822,4 +875,10 @@ Authors' Addresses
 
 
 
-Space-Type                    Informational                    [Page 14]
+
+
+
+
+
+
+Space-Type                    Informational                    [Page 15]

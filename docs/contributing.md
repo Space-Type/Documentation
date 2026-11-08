@@ -105,6 +105,8 @@ server, they are logged as a warning):
     | `RandomShots { min, max }` | Fires at random intervals |
     | `AimedBursts { ... }` | Fires bursts at the nearest player |
     | `Boss` | Its death clears the stage |
+    | `Swing { ... }` | A part sweeping an arc around its parent (a tail segment) |
+    | `Enrage { ... }` | At low health: phase 2, bigger bursts, faster swinging parts |
 
     Parts of a big enemy go in `parts`: they follow it and die with it. A boss
     is named in the `BOSSES` table, so stage files can use it.

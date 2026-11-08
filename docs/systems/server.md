@@ -97,10 +97,14 @@ enemy or a boss is a **blueprint** (`src/game/Blueprints`), not a class:
 | `AimedBursts` | `BurstFire` | Fires bursts at the nearest player, once stopped |
 | `Attached { parent }` | `Attachment` | A part follows its parent and dies with it |
 | `Boss` | `BossDefeat` | Its death clears the stage |
+| `Swing` | `Swinging` | A part sweeping an arc around a point of its parent, like a tail segment |
+| `Enrage` | `PhaseChange` | Once its health is low enough: `BossPhase` 2, bigger bursts, faster swinging parts |
 
 The **Dobkeratops** (stage 1 boss) is its weak point (`Boss`, 60 `Health`,
-`AimedBursts` of 3 shots every 2 s, `StopAt`) with an `Armored` body attached
-to it. See [Contributing](../contributing.md#add-an-enemy-or-a-boss) to add one.
+`AimedBursts` of 3 shots every 2 s, `StopAt`, `Enrage` at 20 HP) with an
+`Armored` body and a tail of 10 `Armored` segments that `Swing` in a whip-like
+arc, all attached to it. At 20 HP it gets angry: bursts of 5 shots every 1.5 s,
+a tail 1.5 times faster. See [Contributing](../contributing.md#add-an-enemy-or-a-boss) to add one.
 
 ## Shooting and collisions
 

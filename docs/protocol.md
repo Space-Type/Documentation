@@ -261,6 +261,7 @@ right after a join.
 | 6 to 10 | `PLAYER_BEAM_1` to `PLAYER_BEAM_5` | Charged beam of a player, by charge level (1 to 5) |
 | 11 | `ENEMY_DOBKERATOPS` | Stage 1 boss: its body (armored, it does not take damage) |
 | 12 | `ENEMY_DOBKERATOPS_CORE` | Stage 1 boss: its weak point. Its `Health` is the boss health; its deletion is the boss death |
+| 13 | `ENEMY_DOBKERATOPS_TAIL` | Stage 1 boss: a segment of its tail, sweeping the screen; armored, it hurts on contact |
 
 New kinds are added at the end: existing values never change.
 
@@ -280,6 +281,7 @@ Component types are the index of the component in this table:
 | 6 | `Velocity` | 12 | `position` 2 × `f32` (units per tick), `angular` `f32` |
 | 7 | `PlayerName` | 1 to 33 | `str32`: the player's name |
 | 8 | `Health` | 4 | `hp` `u16`, `max` `u16` |
+| 9 | `BossPhase` | 1 | `phase` `u8`: 1 when a boss comes, 2 once it gets angry |
 
 New components are added at the end: existing types never change. The server
 sends every component of every entity 20 times per second, except
@@ -293,7 +295,8 @@ sends every component of every entity 20 times per second, except
   0.4 s, up to 5), release to fire a beam (`PLAYER_BEAM_n`).
 - **Level**: one `GENERIC` entity with `Level`. A change of `stage` starts a
   new stage; `won = true` ends the game with a victory.
-- **Boss**: `Health` of the `ENEMY_DOBKERATOPS_CORE` entity is the boss health.
+- **Boss**: `Health` of the `ENEMY_DOBKERATOPS_CORE` entity is the boss health. When its
+  `BossPhase` goes up, the boss gets angry: a client SHOULD show it (text, sound, flash).
 
 ## 7. Behaviour
 
@@ -404,7 +407,7 @@ A peer receives datagrams from anyone. Before using a packet, a receiver
 3. Check that the datagram holds the fixed fields of the type **before reading
    them**, then that it holds every variable part: `str32` lengths (at most 32)
    and the `EntityList` `count` (16 bytes per entry).
-4. Reject an unknown component type (9 or more) in `EntityComponentData`.
+4. Reject an unknown component type (10 or more) in `EntityComponentData`.
 5. Treat a packet that fails a check as if it never arrived: drop it, keep
    running, keep no state about it.
 

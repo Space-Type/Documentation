@@ -120,14 +120,16 @@ tick. The server systems run in this order:
 | 50 | `Shooting` | Missiles, charged beams, enemies' random shots |
 | 60 | `Flight` | Enemies and missiles fly; they are removed off screen |
 | 110 | `Collisions` | Hits, damage, scores, lives |
+| 112 | `Swinging` | Swinging parts (a boss tail) sweep their arc |
 | 115 | `Attachment` | Boss parts follow their weak point, and die with it |
+| 118 | `PhaseChange` | A boss whose health is low gets angry (phase 2) |
 | 120 | `BossDefeat` | A killed boss clears the stage |
 | 125 | `StageTransition` | Next stage, or victory after the last one |
 
 Stages and bosses are **data**: a stage is a file
 (`assets/stages/stage-<n>.waves`: length, boss, waves) and a boss is a
 **blueprint**, a list of behaviour components (`Enemy`, `Armored`, `StopAt`,
-`Attached`, `AimedBursts`, `Boss`...) run by the generic systems above. Adding
+`Attached`, `Swing`, `AimedBursts`, `Enrage`, `Boss`...) run by the generic systems above. Adding
 a stage needs no code. See the [server](systems/server.md).
 
 ## A frame on the client
