@@ -52,7 +52,7 @@ namespace {
                 m_Socket.send(packet, m_Server);
             }
 
-            // The next datagram within `timeoutMs`, if any
+            // The next datagram within `timeoutMs`, if any. A Ping is answered, as a client must
             std::optional<Packet> receive(int timeoutMs)
             {
                 if (!m_Socket.pollReceive(timeoutMs))
@@ -61,6 +61,11 @@ namespace {
                 Packet packet = {};
 
                 m_Socket.receive(packet);
+                try {
+                    if (std::holds_alternative<Packets::Ping>(packet.deserialize()))
+                        send(Packets::Ping{});
+                } catch (const std::exception&) {
+                }
                 return packet;
             }
 
