@@ -18,3 +18,9 @@ python3 -m venv .venv
 Pages are Markdown files in `docs/`, listed in the `nav` section of
 `mkdocs.yml`. The CI builds the site with `mkdocs build --strict`, so broken
 links fail the build.
+
+## Benchmarks
+
+`benchmarks/` holds `rtype_bench`, the program that measures the numbers of the
+technical study (packet sizes, encoding, ECS, bandwidth, packet loss,
+malformed packets). See [benchmarks/README.md](benchmarks/README.md).

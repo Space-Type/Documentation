@@ -32,8 +32,11 @@ class Movement {
     void* m_Engine = nullptr;
 
     public:
-        // State systems run in engine.update(), render systems in engine.render()
-        static constexpr Wrecks::ECS::SystemAttributes ATTRIBUTES = { .stage = Wrecks::ECS::SystemAttributes::STATE };
+        // Runs in engine.fixedUpdate(dt); systems of a stage run by increasing order
+        static constexpr Wrecks::ECS::SystemAttributes ATTRIBUTES = {
+            .stage = Wrecks::ECS::SystemAttributes::FIXED_UPDATE,
+            .order = 10,
+        };
 
         static constexpr Wrecks::Signature signature() noexcept
         {
@@ -43,7 +46,7 @@ class Movement {
         }
 
         void setEngine(void* engine) noexcept { m_Engine = engine; }
-        void operator()(Wrecks::ECS::Entity entity);   // called for each matching entity
+        void operator()(Wrecks::ECS::Entity entity, Wrecks::DeltaTime dt);   // called for each matching entity
 };
 
 using Engine = Wrecks::ECS::Engine<std::tuple<Movement>, Components>;
@@ -52,7 +55,7 @@ Engine engine;
 Wrecks::ECS::Entity ship = engine.createEntity();
 engine.addComponent(ship, Transform{0.0F, 0.0F});
 engine.addComponent(ship, Physics{1.0F, 0.0F});
-engine.update();    // runs Movement on the ship
+engine.fixedUpdate(std::chrono::duration<double>(1.0 / 120.0));    // runs Movement on the ship
 ```
 
 How it works:
@@ -62,15 +65,18 @@ How it works:
   signature it needs, and the engine iterates over the entities whose
   signature matches.
 - Each component type is stored in its own **packed array**
-  (`ComponentContainer`): components sit next to each other in memory, which is
-  cache-friendly when a system walks over all of them.
+  (`ComponentContainer`), with hash maps between entities and indices. Walking
+  over the components is cache-friendly; reaching the component of a given
+  entity costs a hash map lookup ([measured](../technical-study.md#engine-architecture-ecs)).
 - Deleted entity identifiers are **recycled** for new entities.
 - Systems and components are resolved with templates and concepts: there is no
   virtual call and no runtime type lookup. A missing component or a system that
   does not meet the `System` concept is a **compile error**.
-- Every system declares a **stage** (`ATTRIBUTES`): state systems run in
-  `engine.update()` (game logic) and render systems in `engine.render()`, so
-  a program can update its state and draw at different moments.
+- Every system declares a **stage** and an **order** (`ATTRIBUTES`):
+  `UPDATE` systems run in `engine.update(dt)` (once per frame),
+  `FIXED_UPDATE` systems in `engine.fixedUpdate(dt)` (at the fixed simulation
+  rate) and `RENDER` systems in `engine.render(dt)`. Within a stage, systems
+  are sorted by order at compile time.
 
 ## Events
 
